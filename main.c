@@ -107,13 +107,17 @@ void ApplyCamera(CAMERA *cam) {
 
 
 void hbuts(){
+    int speed= 6;
 	pad = PadRead(0);                             // Read pads input. id is unused, always 0.
                                                       // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
         // D-pad        
-        if(pad & PADLup)   {FntPrint("up \n"); camera.tilv -= 4;} // 🡩           // To access pad 2, use ( pad >> 16 & PADLup)...
-        if(pad & PADLdown) {FntPrint("down \n");camera.tilv += 4;} // 🡫
-        if(pad & PADLright){FntPrint("right \n");camera.panv -= 4;} // 🡪
-        if(pad & PADLleft) {FntPrint("left \n");camera.panv += 4;} // 🡨
+        if(pad & PADLup)   {
+            FntPrint("up \n");
+            camera.tilv -= 4;
+             camera.pos.vx += speed;} // 🡩           // To access pad 2, use ( pad >> 16 & PADLup)...
+        if(pad & PADLdown) {FntPrint("down \n"); camera.tilv += 4;camera.pos.vx -= speed;} // 🡫
+        if(pad & PADLright){FntPrint("right \n"); camera.panv -= 4;camera.pos.vz += speed;} // 🡪
+        if(pad & PADLleft) {FntPrint("left \n"); camera.panv += 4;camera.pos.vz -= speed;} // 🡨
         // Buttons
         if(pad & PADRup)   {FntPrint("tri \n");
 		
@@ -145,6 +149,7 @@ void INIT(){
     InitGeom();
     SetGraphDebug(0);
     PadInit(0);
+    
     opencd();  
     cd_read_file("GRID.TMD", &CDData[0]);
 	closecd();
@@ -195,18 +200,21 @@ int main(void) {
     PutDispEnv(&db[0].disp);
 
 	ObjectCount += LoadTMD(CDData[0], &Object[0], 0);
-	
-    while (1) {
-        cdb = (cdb == &db[0]) ? &db[1] : &db[0];
 
-        camera.pos.vx = -(camera.x/ONE);
+    camera.pos.vx = -(camera.x/ONE);
 		camera.pos.vy = -(camera.y/ONE);
 		camera.pos.vz = -(camera.z/ONE);
 		
 		camera.rot.vx = camera.til;
 		camera.rot.vy = -camera.pan;
-
         ApplyCamera(&camera);
+	
+    while (1) {
+        cdb = (cdb == &db[0]) ? &db[1] : &db[0];
+
+        
+
+        
 
         ClearOTagR(cdb->ot, OTSIZE);
 
@@ -215,7 +223,7 @@ int main(void) {
         hbuts();
 
         
-        FntPrint(camera.pos);
+        FntPrint("%d, %d, %d",camera.pos.vx,camera.pos.vy,camera.pos.vz);
 
 
 
