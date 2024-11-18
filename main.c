@@ -6,6 +6,8 @@
 #include <pad.h>
 #include <libpad.h>
 #include "dep/CDread.h"
+#include "dep/3D.h"
+
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 
@@ -18,11 +20,10 @@ int pad= 0;
 //array for cd data variables.
 u_long* CDData[7];
 
-struct Grid
-{
-    VECTOR pos;
-    SVECTOR Rot;
-};
+struct {
+	VECTOR position;
+	SVECTOR rotation;
+} grid;
 
 
 
@@ -138,11 +139,21 @@ void hbuts(){
 }
 
 
+void INIT(){
+    ReadcdInit();
+    ResetGraph(0);
+    InitGeom();
+    SetGraphDebug(0);
+    PadInit(0);
+    opencd();  
+    cd_read_file("GRID.TMD", &CDData[0]);
+	closecd();
 
+}
 
 int main(void) {
 
-    ReadcdInit();
+    
 
     DB db[2];
     DB *cdb;
@@ -152,10 +163,9 @@ int main(void) {
     CVECTOR col[6];
     size_t i;
 
-    ResetGraph(0);
-    InitGeom();
-
-    SetGraphDebug(0);
+    
+    INIT();
+    
 
     FntLoad(960, 256);
     SetDumpFnt(FntOpen(32, 32, 320, 64, 0, 512));
@@ -184,7 +194,7 @@ int main(void) {
     PutDrawEnv(&db[0].draw);
     PutDispEnv(&db[0].disp);
 
-	PadInit(0);
+	ObjectCount += LoadTMD(CDData[0], &Object[0], 0);
 	
     while (1) {
         cdb = (cdb == &db[0]) ? &db[1] : &db[0];
@@ -210,7 +220,7 @@ int main(void) {
 
 
 
-
+        RenderObject(grid.position, grid.rotation, &Object[0]);
         add_cube(cdb->ot, cdb->s, &transform);
 
         // Wait for all drawing to finish and wait for VSync
