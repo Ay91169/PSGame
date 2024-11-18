@@ -1,9 +1,34 @@
 #include <libgs.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <STDLIB.H>
+
+#include <LIBGTE.H>
+#include <LIBGPU.H>
+
+#include <LIBETC.H>
+#include <LIBSPU.H>
+#include <LIBDS.H>
+#include <STRINGS.H>
+#include <SYS/TYPES.H>
 #define MAXOBJ 100
 GsDOBJ2	Object[MAXOBJ];
 int ObjectCount=0;
+
+#define OT_LENGTH	12
+#define OT_ENTRIES	1<<OT_LENGTH
+#define PACKETMAX	2048
+
+GsOT		orderingTable[2];
+GsOT_TAG	orderingTable_TAG[2][OT_ENTRIES];
+int			myActiveBuff=0;
+PACKET GPUOutputPacket[2][PACKETMAX*24];
+
+
+
+
+
+
 
 void RenderObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 
@@ -31,7 +56,7 @@ void RenderObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 	GsSetLsMatrix(&omtx);
 
 	// Sort the object!
-	//GsSortObject4(obj, &orderingTable[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+	GsSortObject4(obj, &orderingTable[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
 
 }
 

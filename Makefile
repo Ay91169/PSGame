@@ -5,7 +5,7 @@ SRCS = \
 third_party/nugget/common/crt0/crt0.s \
 main.c \
 dep/CDread.c \
-dep/3D.c
+dep/3D.c \
 
 CPPFLAGS += -Idep
 CPPFLAGS += -Ithird_party/psyq-iwyu/include

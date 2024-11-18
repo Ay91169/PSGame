@@ -2,6 +2,8 @@
 #include <libetc.h>
 #include <libgpu.h>
 #include <libgte.h>
+#include <libgs.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <pad.h>
 #include <libpad.h>
@@ -60,6 +62,21 @@ static SVECTOR cube_vertices[] = {
 static int cube_indices[] = {
     0, 1, 2, 3, 1, 5, 6, 2, 5, 4, 7, 6, 4, 0, 3, 7, 4, 5, 1, 0, 6, 7, 3, 2,
 };
+
+
+
+
+
+
+
+//DEBUGGING STUFF
+
+
+
+
+//DEBUGGING STUFF
+
+
 
 static void init_cube(DB *db, CVECTOR *col) {
     size_t i;
