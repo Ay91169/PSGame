@@ -191,7 +191,7 @@ int main(void) {
         hbuts();
 
         
-        
+        FntPrint(camera.pos);
 
 
 

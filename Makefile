@@ -1,4 +1,4 @@
-TARGET = chaotic
+TARGET = PSGAME
 TYPE = ps-exe
 
 SRCS = \
