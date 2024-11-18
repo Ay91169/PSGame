@@ -3,8 +3,10 @@ TYPE = ps-exe
 
 SRCS = \
 third_party/nugget/common/crt0/crt0.s \
-main.c
+main.c \
+dep/CDread.c
 
+CPPFLAGS += -Idep
 CPPFLAGS += -Ithird_party/psyq-iwyu/include
 LDFLAGS += -Lthird_party/psyq/lib
 LDFLAGS += -Wl,--start-group

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <pad.h>
 #include <libpad.h>
+#include "dep/CDread.h"
 
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
@@ -14,6 +15,15 @@
 #define CUBESIZE 196
 
 int pad= 0;
+
+
+struct Grid
+{
+    VECTOR pos;
+    SVECTOR Rot;
+};
+
+
 
 typedef struct {
 	int		x,xv;
@@ -130,6 +140,9 @@ void hbuts(){
 
 
 int main(void) {
+
+    ReadcdInit();
+
     DB db[2];
     DB *cdb;
     SVECTOR rotation = {0};
