@@ -1,0 +1,26 @@
+void hbuts(){
+    pad = PadRead(0); // Read pads input
+    
+    // D-pad
+    if ((pad & PADLup) && !(prevPad & PADLup))   { FntPrint("up \n"); } 
+    if ((pad & PADLdown) && !(prevPad & PADLdown)) { FntPrint("down \n"); }
+    if ((pad & PADLright) && !(prevPad & PADLright)) { FntPrint("right \n"); }
+    if ((pad & PADLleft) && !(prevPad & PADLleft)) { FntPrint("left \n"); }
+
+    // Buttons
+    if ((pad & PADRup) && !(prevPad & PADRup))   { FntPrint("tri \n"); }
+    if ((pad & PADRdown) && !(prevPad & PADRdown)) { FntPrint("X \n"); }
+    if ((pad & PADRright) && !(prevPad & PADRright)) { FntPrint("O \n"); }
+    if ((pad & PADRleft) && !(prevPad & PADRleft)) { FntPrint("Sqr \n"); }
+
+    // Shoulder buttons
+    if ((pad & PADL1) && !(prevPad & PADL1)) { FntPrint("L1 \n"); }
+    if ((pad & PADL2) && !(prevPad & PADL2)) { FntPrint("L2 \n"); }
+    if ((pad & PADR1) && !(prevPad & PADR1)) { FntPrint("R1 \n"); }
+    if ((pad & PADR2) && !(prevPad & PADR2)) { FntPrint("R2 \n"); }
+
+    // Start & Select
+    if ((pad & PADstart) && !(prevPad & PADstart)) { FntPrint("Start \n"); }
+    if ((pad & PADselect) && !(prevPad & PADselect)) { FntPrint("sel \n"); }
+
+    prevPad = pad;  // Save the current state for the next frame
