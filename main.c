@@ -7,7 +7,6 @@
 #include <libpad.h>
 #include "dep/CDread.h"
 
-
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 
 #define OTSIZE 4096
@@ -16,6 +15,8 @@
 
 int pad= 0;
 
+//array for cd data variables.
+u_long* CDData[7];
 
 struct Grid
 {
