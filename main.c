@@ -7,6 +7,8 @@
 #include <libgs.h>
 #include <libpad.h>
 #include <pad.h>
+#include <stdio.h>
+#include <abs.h>
 
 //FUNCS
 #include "dep/CDread.h"
@@ -55,8 +57,17 @@ struct {
 	GsCOORDINATE2 coord2;
 } Camera = {0};
 
-int i,PadStatus;
+int i;
 
+struct {
+    int PadStatus;   // Digital button state
+    unsigned char ljoy_h; // Left stick X-axis
+    unsigned char ljoy_v; // Left stick Y-axis
+    unsigned char rjoy_h; // Right stick X-axis
+    unsigned char rjoy_v; // Right stick Y-axis
+} PADTYPE;
+
+char padBuffer[2][34];
 
 // Object handler
 GsDOBJ2	Object[MAX_OBJECTS]={0};
@@ -80,47 +91,163 @@ void PrepDisplay();
 void Display();
 
 
+
+//debug code
+
+
+
+void debugAnalogInput() {
+    
+
+    // Read pad state
+    PADTYPE.PadStatus = PadRead(0);
+
+    // Detect if in analog mode
+    if ((PADTYPE.PadStatus & 0xF000) == 0x7000) { // Analog mode
+        printf("Controller is in analog mode\n");
+
+        // Read raw joystick values
+        int leftStickX = PADTYPE.ljoy_h;
+        int leftStickY = PADTYPE.ljoy_v;
+        int rightStickX = PADTYPE.rjoy_h;
+        int rightStickY = PADTYPE.rjoy_v;
+
+        // Print joystick values
+        printf("Left Stick: X=%d, Y=%d\n", leftStickX, leftStickY);
+        printf("Right Stick: X=%d, Y=%d\n", rightStickX, rightStickY);
+
+        // Handle joystick input with thresholds
+        if (leftStickX < 128 - 20) printf("Moving Left\n");
+        if (leftStickX > 128 + 20) printf("Moving Right\n");
+        if (leftStickY < 128 - 20) printf("Moving Up\n");
+        if (leftStickY > 128 + 20) printf("Moving Down\n");
+    } else {
+        printf("Controller is in digital mode\n");
+    }
+}
+
+
+// Log raw direct input data
+void logDirectInput() {
+    unsigned char *padData;  // Pointer to raw pad data
+    
+
+    // Read state for Pad 1
+    PADTYPE.PadStatus = PadRead(0);
+
+    // Check if the pad is connected
+    if (PADTYPE.PadStatus != 0) {
+        padData = (unsigned char *)PadGetState(0); // Get raw pad data for Pad 1
+
+        if (padData != NULL) {
+            printf("Raw Pad Data:\n");
+
+            // Print all 34 bytes of pad data
+            for (int i = 0; i < 34; i++) {
+                printf("%02X ", padData[i]);
+            }
+            printf("\n");
+        } else {
+            printf("Pad not connected or unresponsive.\n");
+        }
+    } else {
+        printf("No controller detected.\n");
+    }
+}
+
+//debug code
+
+
 void hbuts(){
     int speed= 3;
-	PadStatus = PadRead(0);                             // Read pads input. id is unused, always 0.
+	
+
+	
+
+	PADTYPE.PadStatus = PadRead(0);                             // Read pads input. id is unused, always 0.
+	PADTYPE.ljoy_v = PadRead(0);
+	PADTYPE.ljoy_h = PadRead(0);
+	PADTYPE.rjoy_h = PadRead(0);
+	PADTYPE.rjoy_v = PadRead(0);
                                                       // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
-        // D-pad        
-        if(PadStatus & PADLup)   {
+        // D-pad
+
+
+		if (PADTYPE.PadStatus & 0xF000) {
+   		 	FntPrint("Analog mode active\n");
+		} else {
+    		FntPrint("Digital mode active\n");
+		}
+
+		if (PADTYPE.PadStatus > 0) {
+        printf("Raw PadStatus: 0x%08X\n", PADTYPE.PadStatus);
+    	}     
+        if(PADTYPE.PadStatus & PADLup)   {
             FntPrint("up \n"); Camera.panv += 4;Camera.pos.vz -= speed;
             } // 🡩           // To access pad 2, use ( pad >> 16 & PADLup)...
-        if(PadStatus & PADLdown) {FntPrint("down \n"); Camera.panv -= 4;Camera.pos.vz += speed; } // 🡫
-        if(PadStatus & PADLright){FntPrint("right \n"); Camera.rol += 4;Camera.pos.vx -= speed;} // 🡪
-        if(PadStatus & PADLleft) {FntPrint("left \n"); Camera.rol -= 4;
+        if(PADTYPE.PadStatus & PADLdown) {FntPrint("down \n"); Camera.panv -= 4;Camera.pos.vz += speed; } // 🡫
+        if(PADTYPE.PadStatus & PADLright){FntPrint("right \n"); Camera.rol += 4;Camera.pos.vx -= speed;} // 🡪
+        if(PADTYPE.PadStatus & PADLleft) {FntPrint("left \n"); Camera.rol -= 4;
              Camera.pos.vx += speed;} // 🡨
         // Buttons
-        if(PadStatus & PADRup)   {FntPrint("tri \n");
+        if(PADTYPE.PadStatus & PADRup)   {FntPrint("tri \n");
 		
 		} // △
-        if(PadStatus & PADRdown) {FntPrint("X \n");
+        if(PADTYPE.PadStatus & PADRdown) {FntPrint("X \n");
 		;
 		
 		} // ╳
-        if(PadStatus & PADRright){FntPrint("O \n");
+        if(PADTYPE.PadStatus & PADRright){FntPrint("O \n");
 		
 		Camera.z += (csin(Camera.pan)*1);
 		Camera.x -= (ccos(Camera.pan)*1);
 		} // ⭘
-        if(PadStatus & PADRleft) {FntPrint("Sqr \n");} // ⬜
+        if(PADTYPE.PadStatus & PADRleft) {FntPrint("Sqr \n");} // ⬜
         // Shoulder buttons
-        if(PadStatus & PADL1){FntPrint("L1 \n");} // L1
-        if(PadStatus & PADL2){FntPrint("L2 \n");} // L2
-        if(PadStatus & PADR1){FntPrint("R1 \n");} // R1
-        if(PadStatus & PADR2){FntPrint("R2 \n");} // R2
+        if(PADTYPE.PadStatus & PADL1){FntPrint("L1 \n");} // L1
+        if(PADTYPE.PadStatus & PADL2){FntPrint("L2 \n");} // L2
+        if(PADTYPE.PadStatus & PADR1){FntPrint("R1 \n");} // R1
+        if(PADTYPE.PadStatus & PADR2){FntPrint("R2 \n");} // R2
         // Start & Select
-        if(PadStatus & PADstart){FntPrint("Start \n");} // START
-        if(PadStatus & PADselect){FntPrint("sel \n");}                                             // SELECT
+        if(PADTYPE.PadStatus & PADstart){FntPrint("Start \n");} // START
+        if(PADTYPE.PadStatus & PADselect){FntPrint("sel \n");}  // SELECT
+		if(PADTYPE.PadStatus & PADR3){FntPrint("R3 \n");}
+		if(PADTYPE.PadStatus & PADL3){FntPrint("L3 \n");}   
+
+	int leftStickX = PADTYPE.ljoy_h; // Left stick X-axis (0–255)
+    int leftStickY = PADTYPE.ljoy_v; // Left stick Y-axis (0–255)
+    int rightStickX = PADTYPE.rjoy_h; // Right stick X-axis (0–255)
+    int rightStickY = PADTYPE.rjoy_v; // Right stick Y-axis (0–255)
+
+	// Center is around 128, so we calculate offset
+    int leftX = leftStickX - 128; // -128 to 127
+    int leftY = leftStickY - 128; // -128 to 127
+    int rightX = rightStickX - 128; // -128 to 127
+    int rightY = rightStickY - 128; // -128 to 127
+
+	// Log the analog stick values
+    //printf("Left Stick: X=%d Y=%d\n", leftX, leftY);
+    //printf("Right Stick: X=%d Y=%d\n", rightX, rightY);
+	if (leftX > 10) { // Add deadzone for smoother control
+        Camera.pos.vx += leftX / 10; // Adjust divisor for sensitivity
+    }
+    if (leftY > 10) {
+        Camera.pos.vz += leftY / 10;
+    }
+    if (rightX > 10) {
+        Camera.panv += rightX / 10;
+    }
+    if (rightY > 10) {
+        Camera.rol += rightY / 10;
+    }
+
 }
 
 
 // Main stuff
 int main() {
 	
-	
+	PadInitDirect(padBuffer[0], padBuffer[1]);
 	int Accel;
 	
 	// Object coordinates
@@ -179,8 +306,10 @@ int main() {
 	while(1) {
 		
 		hbuts();
-		
-		
+		//debugAnalogInput();
+		logDirectInput();
+
+
 		// Prepare for rendering
 		PrepDisplay();
 		

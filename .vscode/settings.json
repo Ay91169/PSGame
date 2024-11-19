@@ -5,6 +5,7 @@
         "MAIN.C": "cpp",
         "*.dep": "c",
         "PLATFORM.C": "cpp",
-        "MARITEX.C": "cpp"
+        "MARITEX.C": "cpp",
+        "pt.c": "cpp"
     }
 }
