@@ -7,7 +7,7 @@ main.c \
 dep/CDread.c 
 
 CPPFLAGS += -Idep
-CPPFLAGS += -Ithird_party/psyq-iwyu/include
+CPPFLAGS += -Ithird_party/psyq_iwyue/include
 LDFLAGS += -Lthird_party/psyq/lib
 LDFLAGS += -Wl,--start-group
 LDFLAGS += -lapi
