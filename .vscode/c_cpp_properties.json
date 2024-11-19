@@ -12,7 +12,7 @@
         "${env:AppData}/mips/mips/include",
         "${workspaceFolder}/",
         "${workspaceFolder}/third_party/nugget",
-        "${workspaceFolder}/third_party/psyq-iwyu/include"
+        "${workspaceFolder}/third_party/psyq_iwyue/include"
       ],
       "intelliSenseMode": "gcc-x86"
     },
