@@ -8,7 +8,10 @@
 #include <pad.h>
 #include <libpad.h>
 #include "dep/CDread.h"
-#include "dep/3D.h"
+
+
+//MODEL
+#include "models/PT.c"
 
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
@@ -16,6 +19,29 @@
 #define OTSIZE 4096
 #define SCREEN_Z 512
 #define CUBESIZE 196
+
+#define SCREEN_XRES 320
+
+#define CENTERX			SCREEN_XRES/2
+
+#define MAX_OBJS 5
+
+
+// Increasing this value (max is 14) reduces sorting errors in certain cases
+#define OT_LENGTH	12
+
+#define OT_ENTRIES	1<<OT_LENGTH
+#define PACKETMAX	2048
+
+GsOT		myOT[2];						// OT handlers
+GsOT_TAG	myOT_TAG[2][OT_ENTRIES];		// OT tables
+PACKET		myPacketArea[2][PACKETMAX*24];	// Packet buffers
+int			myActiveBuff=0;					// Page index counter
+
+
+// Object handler
+GsDOBJ2	Object[MAX_OBJS]={0};
+int		ObjectCount=0;
 
 int pad= 0;
 
@@ -42,6 +68,8 @@ typedef struct {
 	SVECTOR	dvs;
 	
 	MATRIX	mat;
+    GsRVIEW2 view;
+	GsCOORDINATE2 coord2;
 } CAMERA;
 CAMERA		camera={0};
 
@@ -73,8 +101,122 @@ static int cube_indices[] = {
 
 
 
+void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
+	
+	/*	This function draws (or sorts) a TMD model linked to a GsDOBJ2 structure... All
+		matrix calculations are done automatically for simplified object placement.
+		
+		Parameters:
+			pos 	- Object position.
+			rot		- Object orientation.
+			*obj	- Pointer to a GsDOBJ2 structure that is linked to a TMD model.
+			
+	*/
+	
+	MATRIX lmtx,omtx;
+	GsCOORDINATE2 coord;
+	
+	// Copy the camera (base) matrix for the model
+	coord = camera.coord2;
+	
+	// Rotate and translate the matrix according to the specified coordinates
+	RotMatrix(&rot, &omtx);
+	TransMatrix(&omtx, &pos);
+	CompMatrixLV(&camera.coord2.coord, &omtx, &coord.coord);
+	coord.flg = 0;
+	
+	// Apply coordinate matrix to the object
+	obj->coord2 = &coord;
+	
+	// Calculate Local-World (for lighting) and Local-Screen (for projection) matrices and set both to the GTE
+	GsGetLws(obj->coord2, &lmtx, &omtx);
+	GsSetLightMatrix(&lmtx);
+	GsSetLsMatrix(&omtx);
+	
+	// Sort the object!
+	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+	
+}
+int LinkModel(u_long *tmd, GsDOBJ2 *obj) {
+	
+	/*	This function prepares the specified TMD model for drawing and then
+		links it to a GsDOBJ2 structure so it can be drawn using GsSortObject4().
+		
+		By default, light source calculation is disabled but can be re-enabled by
+		simply setting the attribute variable in your GsDOBJ2 structure to 0.
+		
+		Parameters:
+			*tmd - Pointer to a TMD model file loaded in memory.
+			*obj - Pointer to an empty GsDOBJ2 structure.
+	
+		Returns:
+			Number of objects found inside the TMD file.
+			
+	*/
+	
+	u_long *dop;
+	int i,NumObj;
+	
+	// Copy pointer to TMD file so that the original pointer won't get destroyed
+	dop = tmd;
+	
+	// Skip header and then remap the addresses inside the TMD file
+	dop++; GsMapModelingData(dop);
+	
+	// Get object count
+	dop++; NumObj = *dop;
+
+	// Link object handler with the specified TMD
+	dop++;
+	for(i=0; i<NumObj; i++) {
+		GsLinkObject4((u_long)dop, &obj[i], i);
+		obj[i].attribute = (1<<6);	// Disables light source calculation
+	}
+	
+	// Return the object count found inside the TMD
+	return(NumObj);
+	
+}
+void LoadTexture(u_long *addr) {
+	
+	// A simple TIM loader... Not much to explain
+	
+	RECT rect;
+	GsIMAGE tim;
+	
+	// Get TIM information
+	GsGetTimInfo((addr+1), &tim);
+	
+	// Load the texture image
+	rect.x = tim.px;	rect.y = tim.py;
+	rect.w = tim.pw;	rect.h = tim.ph;
+	LoadImage(&rect, tim.pixel);
+	DrawSync(0);
+	
+	// Load the CLUT (if present)
+	if ((tim.pmode>>3) & 0x01) {
+		rect.x = tim.cx;	rect.y = tim.cy;
+		rect.w = tim.cw;	rect.h = tim.ch;
+		LoadImage(&rect, tim.clut);
+		DrawSync(0);
+	}
+	
+}
+
+void PrepDisplay() {
+	
+	// Get active buffer ID and clear the OT to be processed for the next frame
+	myActiveBuff = GsGetActiveBuff();
+	GsSetWorkBase((PACKET*)myPacketArea[myActiveBuff]);
+	GsClearOt(0, 0, &myOT[myActiveBuff]);
+	
+}
+
+
 
 //DEBUGGING STUFF
+
+
 
 
 
@@ -124,7 +266,7 @@ void ApplyCamera(CAMERA *cam) {
 
 
 void hbuts(){
-    int speed= 6;
+    int speed= 3;
 	pad = PadRead(0);                             // Read pads input. id is unused, always 0.
                                                       // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
         // D-pad        
@@ -161,6 +303,23 @@ void hbuts(){
 
 
 void INIT(){
+
+    // Prepare the ordering tables
+	//myOT[0].length	=OT_LENGTH;
+	//myOT[1].length	=OT_LENGTH;
+	//myOT[0].org		=myOT_TAG[0];
+	//myOT[1].org		=myOT_TAG[1];
+
+    //GsClearOt(0, 0, &myOT[0]);
+	//GsClearOt(0, 0, &myOT[1]);
+
+    // Setup 3D and projection matrix
+	//GsInit3D();
+	//GsSetProjection(CENTERX);
+
+    //GsInitCoordinate2(WORLD, &camera.coord2);
+	
+
     ReadcdInit();
     ResetGraph(0);
     InitGeom();
@@ -168,7 +327,7 @@ void INIT(){
     PadInit(0);
     
     opencd();  
-    cd_read_file("GRID.TMD", &CDData[0]);
+    //cd_read_file("GRID.TMD", &CDData[0]);
 	closecd();
 
 }
@@ -184,10 +343,23 @@ int main(void) {
     MATRIX transform;
     CVECTOR col[6];
     size_t i;
+    VECTOR	plat_pos={0};
+	SVECTOR	plat_rot={0};
+    VECTOR	obj_pos={0};
+	SVECTOR	obj_rot={0};
+
+
+
+
+
 
     
     INIT();
     
+
+    
+
+    //ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
 
     FntLoad(960, 256);
     SetDumpFnt(FntOpen(32, 32, 320, 64, 0, 512));
@@ -216,7 +388,7 @@ int main(void) {
     PutDrawEnv(&db[0].draw);
     PutDispEnv(&db[0].disp);
 
-	ObjectCount += LoadTMD(CDData[0], &Object[0], 0);
+	
 
     camera.pos.vx = -(camera.x/ONE);
 		camera.pos.vy = -(camera.y/ONE);
@@ -228,6 +400,8 @@ int main(void) {
 	
     while (1) {
         cdb = (cdb == &db[0]) ? &db[1] : &db[0];
+
+        //PrepDisplay();
 
         
 
@@ -245,7 +419,17 @@ int main(void) {
 
 
 
-        RenderObject(grid.position, grid.rotation, &Object[0]);
+       
+
+
+        // Sort the platform and bulb objects
+		//PutObject(plat_pos, plat_rot, &Object[0]);
+		
+		
+		// Sort our test object(s)
+		//for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
+		//	PutObject(obj_pos, obj_rot, &Object[i]);
+		//}
         add_cube(cdb->ot, cdb->s, &transform);
 
         // Wait for all drawing to finish and wait for VSync

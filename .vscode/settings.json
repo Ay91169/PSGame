@@ -3,6 +3,8 @@
     "files.associations": {
         "malloc.h": "c",
         "MAIN.C": "cpp",
-        "*.dep": "c"
+        "*.dep": "c",
+        "PLATFORM.C": "cpp",
+        "MARITEX.C": "cpp"
     }
 }
