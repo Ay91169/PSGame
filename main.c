@@ -272,7 +272,8 @@ int main() {
 		
 		hbuts();
 		
-		log_pad_buffer(pad_buffer,34);	
+		//log_pad_buffer(pad_buffer,34);	
+		FntPrint("Left Stick Y-Axis: %02X\n, %02X \n", pad_buffer[7],pad_buffer[6]);
 
 		// Prepare for rendering
 		PrepDisplay();
