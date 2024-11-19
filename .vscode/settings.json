@@ -6,6 +6,7 @@
         "*.dep": "c",
         "PLATFORM.C": "cpp",
         "MARITEX.C": "cpp",
-        "pt.c": "cpp"
+        "pt.c": "cpp",
+        "MENU.C": "cpp"
     }
 }

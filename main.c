@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <libetc.h>
 #include <libgte.h>
+#include <libapi.h>
 #include <libgpu.h>
 #include <libgs.h>
 #include <libpad.h>
@@ -74,6 +75,8 @@ int portNo = 0x00;
 int ctr;
 static unsigned char align[6]={0,1,0xFF,0xFF,0xFF,0xFF};
 
+unsigned char pad_buffer[34];
+
 
 #define DUALSHOCKMODE ((u_long *)0x80010000)
 unsigned long *storedMode = DUALSHOCKMODE;
@@ -104,7 +107,13 @@ void Display();
 
 //debug code
 
-
+void log_pad_buffer(unsigned char *buffer, int size) {
+    printf("Controller Buffer: ");
+    for (int i = 0; i < size; i++) {
+        printf("%02X ", buffer[i]);
+    }
+    printf("\n");
+}
 
 
 //debug code
@@ -199,8 +208,10 @@ void hbuts(){
 // Main stuff
 int main() {
 	
-	PadInitDirect(padbuff[0],padbuff[1]);
+	PadInitDirect(pad_buffer,NULL);
+	PadSetAct(0,0,1);
 	PadStartCom();
+	
     
 	int Accel;
 	
@@ -261,7 +272,7 @@ int main() {
 		
 		hbuts();
 		
-
+		log_pad_buffer(pad_buffer,34);	
 
 		// Prepare for rendering
 		PrepDisplay();
