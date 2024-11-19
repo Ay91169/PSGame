@@ -67,7 +67,17 @@ struct {
     unsigned char rjoy_v; // Right stick Y-axis
 } PADTYPE;
 
-char padBuffer[2][34];
+// Dual Shock values
+static unsigned char padbuff[2][34];
+unsigned char Motor[2];
+int portNo = 0x00;
+int ctr;
+static unsigned char align[6]={0,1,0xFF,0xFF,0xFF,0xFF};
+
+
+#define DUALSHOCKMODE ((u_long *)0x80010000)
+unsigned long *storedMode = DUALSHOCKMODE;
+
 
 // Object handler
 GsDOBJ2	Object[MAX_OBJECTS]={0};
@@ -96,64 +106,6 @@ void Display();
 
 
 
-void debugAnalogInput() {
-    
-
-    // Read pad state
-    PADTYPE.PadStatus = PadRead(0);
-
-    // Detect if in analog mode
-    if ((PADTYPE.PadStatus & 0xF000) == 0x7000) { // Analog mode
-        printf("Controller is in analog mode\n");
-
-        // Read raw joystick values
-        int leftStickX = PADTYPE.ljoy_h;
-        int leftStickY = PADTYPE.ljoy_v;
-        int rightStickX = PADTYPE.rjoy_h;
-        int rightStickY = PADTYPE.rjoy_v;
-
-        // Print joystick values
-        printf("Left Stick: X=%d, Y=%d\n", leftStickX, leftStickY);
-        printf("Right Stick: X=%d, Y=%d\n", rightStickX, rightStickY);
-
-        // Handle joystick input with thresholds
-        if (leftStickX < 128 - 20) printf("Moving Left\n");
-        if (leftStickX > 128 + 20) printf("Moving Right\n");
-        if (leftStickY < 128 - 20) printf("Moving Up\n");
-        if (leftStickY > 128 + 20) printf("Moving Down\n");
-    } else {
-        printf("Controller is in digital mode\n");
-    }
-}
-
-
-// Log raw direct input data
-void logDirectInput() {
-    unsigned char *padData;  // Pointer to raw pad data
-    
-
-    // Read state for Pad 1
-    PADTYPE.PadStatus = PadRead(0);
-
-    // Check if the pad is connected
-    if (PADTYPE.PadStatus != 0) {
-        padData = (unsigned char *)PadGetState(0); // Get raw pad data for Pad 1
-
-        if (padData != NULL) {
-            printf("Raw Pad Data:\n");
-
-            // Print all 34 bytes of pad data
-            for (int i = 0; i < 34; i++) {
-                printf("%02X ", padData[i]);
-            }
-            printf("\n");
-        } else {
-            printf("Pad not connected or unresponsive.\n");
-        }
-    } else {
-        printf("No controller detected.\n");
-    }
-}
 
 //debug code
 
@@ -247,7 +199,9 @@ void hbuts(){
 // Main stuff
 int main() {
 	
-	PadInitDirect(padBuffer[0], padBuffer[1]);
+	PadInitDirect(padbuff[0],padbuff[1]);
+	PadStartCom();
+    
 	int Accel;
 	
 	// Object coordinates
@@ -306,8 +260,7 @@ int main() {
 	while(1) {
 		
 		hbuts();
-		//debugAnalogInput();
-		logDirectInput();
+		
 
 
 		// Prepare for rendering
