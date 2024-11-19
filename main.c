@@ -1,5 +1,3 @@
-
-
 #include <sys/types.h>
 #include <libetc.h>
 #include <libgte.h>
@@ -58,6 +56,8 @@ struct {
 } Camera = {0};
 
 int i;
+
+
 
 struct {
     int PadStatus;   // Digital button state
