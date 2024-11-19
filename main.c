@@ -1,30 +1,34 @@
+
+
 #include <sys/types.h>
 #include <libetc.h>
-#include <libgpu.h>
 #include <libgte.h>
+#include <libgpu.h>
 #include <libgs.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pad.h>
 #include <libpad.h>
+#include <pad.h>
+
+//FUNCS
 #include "dep/CDread.h"
 
 
-//MODEL
+
+// TMD models
 #include "models/PT.c"
 
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 
-#define OTSIZE 4096
-#define SCREEN_Z 512
-#define CUBESIZE 196
+// Maximum number of objects
+#define MAX_OBJECTS 3
 
-#define SCREEN_XRES 320
+
+// Screen resolution and dither mode
+#define SCREEN_XRES		640
+#define SCREEN_YRES 	480
+#define DITHER			1
 
 #define CENTERX			SCREEN_XRES/2
-
-#define MAX_OBJS 5
+#define CENTERY			SCREEN_YRES/2
 
 
 // Increasing this value (max is 14) reduces sorting errors in certain cases
@@ -33,73 +37,217 @@
 #define OT_ENTRIES	1<<OT_LENGTH
 #define PACKETMAX	2048
 
+
 GsOT		myOT[2];						// OT handlers
 GsOT_TAG	myOT_TAG[2][OT_ENTRIES];		// OT tables
 PACKET		myPacketArea[2][PACKETMAX*24];	// Packet buffers
 int			myActiveBuff=0;					// Page index counter
 
 
-// Object handler
-GsDOBJ2	Object[MAX_OBJS]={0};
-int		ObjectCount=0;
-
-int pad= 0;
-
-//array for cd data variables.
-u_long* CDData[7];
-
+// Camera coordinates
 struct {
-	VECTOR position;
-	SVECTOR rotation;
-} grid;
-
-
-
-typedef struct {
-	int		x,xv;
-	int		y,yv;
-	int		z,zv;
-	int		pan,panv;
-	int		til,tilv;
-	int		rol;
-	
+	int		x,y,z;
+	int		pan,til,rol,panv;
+    
 	VECTOR	pos;
 	SVECTOR rot;
-	SVECTOR	dvs;
-	
-	MATRIX	mat;
-    GsRVIEW2 view;
+	GsRVIEW2 view;
 	GsCOORDINATE2 coord2;
-} CAMERA;
-CAMERA		camera={0};
+} Camera = {0};
 
-typedef struct DB {
-    DRAWENV draw;
-    DISPENV disp;
-    u_long ot[OTSIZE];
-    POLY_F4 s[6];
-} DB;
-
-static SVECTOR cube_vertices[] = {
-    {-CUBESIZE / 2, -CUBESIZE / 2, -CUBESIZE / 2, 0}, {CUBESIZE / 2, -CUBESIZE / 2, -CUBESIZE / 2, 0},
-    {CUBESIZE / 2, CUBESIZE / 2, -CUBESIZE / 2, 0},   {-CUBESIZE / 2, CUBESIZE / 2, -CUBESIZE / 2, 0},
-    {-CUBESIZE / 2, -CUBESIZE / 2, CUBESIZE / 2, 0},  {CUBESIZE / 2, -CUBESIZE / 2, CUBESIZE / 2, 0},
-    {CUBESIZE / 2, CUBESIZE / 2, CUBESIZE / 2, 0},    {-CUBESIZE / 2, CUBESIZE / 2, CUBESIZE / 2, 0},
-};
-
-static int cube_indices[] = {
-    0, 1, 2, 3, 1, 5, 6, 2, 5, 4, 7, 6, 4, 0, 3, 7, 4, 5, 1, 0, 6, 7, 3, 2,
-};
+int i,PadStatus;
 
 
+// Object handler
+GsDOBJ2	Object[MAX_OBJECTS]={0};
+int		ObjectCount=0;
+
+// Lighting coordinates
+GsF_LIGHT pslt[1];
 
 
+// Prototypes
+int main();
+
+void CalculateCamera();
+void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj);
+
+int LinkModel(u_long *tmd, GsDOBJ2 *obj);
+void LoadTexture(u_long *addr);
+
+void init();
+void PrepDisplay();
+void Display();
 
 
+void hbuts(){
+    int speed= 3;
+	PadStatus = PadRead(0);                             // Read pads input. id is unused, always 0.
+                                                      // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
+        // D-pad        
+        if(PadStatus & PADLup)   {
+            FntPrint("up \n"); Camera.panv += 4;Camera.pos.vz -= speed;
+            } // 🡩           // To access pad 2, use ( pad >> 16 & PADLup)...
+        if(PadStatus & PADLdown) {FntPrint("down \n"); Camera.panv -= 4;Camera.pos.vz += speed; } // 🡫
+        if(PadStatus & PADLright){FntPrint("right \n"); Camera.rol += 4;Camera.pos.vx -= speed;} // 🡪
+        if(PadStatus & PADLleft) {FntPrint("left \n"); Camera.rol -= 4;
+             Camera.pos.vx += speed;} // 🡨
+        // Buttons
+        if(PadStatus & PADRup)   {FntPrint("tri \n");
+		
+		} // △
+        if(PadStatus & PADRdown) {FntPrint("X \n");
+		;
+		
+		} // ╳
+        if(PadStatus & PADRright){FntPrint("O \n");
+		
+		Camera.z += (csin(Camera.pan)*1);
+		Camera.x -= (ccos(Camera.pan)*1);
+		} // ⭘
+        if(PadStatus & PADRleft) {FntPrint("Sqr \n");} // ⬜
+        // Shoulder buttons
+        if(PadStatus & PADL1){FntPrint("L1 \n");} // L1
+        if(PadStatus & PADL2){FntPrint("L2 \n");} // L2
+        if(PadStatus & PADR1){FntPrint("R1 \n");} // R1
+        if(PadStatus & PADR2){FntPrint("R2 \n");} // R2
+        // Start & Select
+        if(PadStatus & PADstart){FntPrint("Start \n");} // START
+        if(PadStatus & PADselect){FntPrint("sel \n");}                                             // SELECT
+}
 
-//DEBUGGING STUFF
+
+// Main stuff
+int main() {
+	
+	
+	int Accel;
+	
+	// Object coordinates
+	VECTOR	plat_pos={0};
+	SVECTOR	plat_rot={0};
+	
+	VECTOR	obj_pos={0};
+	SVECTOR	obj_rot={0};
+	
+	VECTOR	bulb_pos={0};
+	SVECTOR	bulb_rot={0};
+	
+	// Player coordinates
+	struct {
+		int x,xv;
+		int y,yv;
+		int z,zv;
+		int pan,panv;
+		int til,tilv;
+	} Player = {0};
+	
+	
+	// Init everything
+	init();
+	
+	
+	// Load the texture for our test model
+	
+	
+	// Link the TMD models
+	ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
+	
+	
+	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
+	for(i=2; i<ObjectCount; i++) {
+		Object[2].attribute = 0;		// Re-enable lighting for the test model
+	}
+	
+	
+	// Default camera/player position
+	Player.x = ONE*-640;
+	Player.y = ONE*510;
+	Player.z = ONE*800;
+	
+	Player.pan = -660;
+	Player.til = -245;
+	
+	
+	// Object positions
+	plat_pos.vy = 1024;
+	bulb_pos.vz = -800;
+	bulb_pos.vy = -400;
+	obj_pos.vy = 400;
+	
+	
+	while(1) {
+		
+		hbuts();
+		
+		
+		// Prepare for rendering
+		PrepDisplay();
+		
+		
+		// Print banner and camera stats
+		
+		FntPrint(" CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
+		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		
+		
+		// Calculate the camera and viewpoint matrix
+		CalculateCamera();
+		
+		
+		// Set the light source coordinates
+		pslt[0].vx = -(bulb_pos.vx);
+		pslt[0].vy = -(bulb_pos.vy);
+		pslt[0].vz = -(bulb_pos.vz);
+		
+		pslt[0].r =	0xff;	pslt[0].g = 0xff;	pslt[0].b = 0xff;
+		GsSetFlatLight(0, &pslt[0]);
+		
+		
+		// Rotate the object
+		//obj_rot.vx += 4;
+		obj_rot.vy += 4;
+		
+		
+		// Sort the platform and bulb objects
+		PutObject(plat_pos, plat_rot, &Object[0]);
+		PutObject(bulb_pos, bulb_rot, &Object[1]);
+		
+		// Sort our test object(s)
+		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
+			PutObject(obj_pos, obj_rot, &Object[i]);
+		}
+		
+		
+		// Display the new frame
+		Display();
+		
+	}
+	
+}
 
 
+void CalculateCamera() {
+	
+	// This function simply calculates the viewpoint matrix based on the camera coordinates...
+	// It must be called on every frame before drawing any objects.
+	
+	VECTOR	vec;
+	GsVIEW2 view;
+	
+	// Copy the camera (base) matrix for the viewpoint matrix
+	view.view = Camera.coord2.coord;
+	view.super = WORLD;
+	
+	// I really can't explain how this works but I found it in one of the ZIMEN examples
+	RotMatrix(&Camera.rot, &view.view);
+	ApplyMatrixLV(&view.view, &Camera.pos, &vec);
+	TransMatrix(&view.view, &vec);
+	
+	// Set the viewpoint matrix to the GTE
+	GsSetView2(&view);
+	
+}
 
 void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 	
@@ -117,12 +265,12 @@ void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 	GsCOORDINATE2 coord;
 	
 	// Copy the camera (base) matrix for the model
-	coord = camera.coord2;
+	coord = Camera.coord2;
 	
 	// Rotate and translate the matrix according to the specified coordinates
 	RotMatrix(&rot, &omtx);
 	TransMatrix(&omtx, &pos);
-	CompMatrixLV(&camera.coord2.coord, &omtx, &coord.coord);
+	CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
 	coord.flg = 0;
 	
 	// Apply coordinate matrix to the object
@@ -137,6 +285,8 @@ void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
 	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
 	
 }
+
+
 int LinkModel(u_long *tmd, GsDOBJ2 *obj) {
 	
 	/*	This function prepares the specified TMD model for drawing and then
@@ -203,6 +353,57 @@ void LoadTexture(u_long *addr) {
 	
 }
 
+
+void init() {
+	
+	SVECTOR VScale={0};
+	
+	// Initialize the GS
+	ResetGraph(0);
+	if (SCREEN_YRES <= 240) {
+		GsInitGraph(SCREEN_XRES, SCREEN_YRES, GsOFSGPU|GsNONINTER, DITHER, 0);
+		GsDefDispBuff(0, 0, 0, 256);
+	} else {
+		GsInitGraph(SCREEN_XRES, SCREEN_YRES, GsOFSGPU|GsINTER, DITHER, 0);	
+		GsDefDispBuff(0, 0, 0, 0);
+	}
+	
+	// Prepare the ordering tables
+	myOT[0].length	=OT_LENGTH;
+	myOT[1].length	=OT_LENGTH;
+	myOT[0].org		=myOT_TAG[0];
+	myOT[1].org		=myOT_TAG[1];
+	
+	GsClearOt(0, 0, &myOT[0]);
+	GsClearOt(0, 0, &myOT[1]);
+	
+	
+	// Initialize debug font stream
+	FntLoad(960, 0);
+	FntOpen(-CENTERX, -CENTERY, SCREEN_XRES, SCREEN_YRES, 0, 512);
+	
+	
+	// Setup 3D and projection matrix
+	GsInit3D();
+	GsSetProjection(CENTERX);
+	
+	
+	// Initialize coordinates for the camera (it will be used as a base for future matrix calculations)
+	GsInitCoordinate2(WORLD, &Camera.coord2);
+	
+	
+	// Set ambient color (for lighting)
+	GsSetAmbient(ONE/4, ONE/4, ONE/4);
+	
+	// Set default lighting mode
+	GsSetLightMode(0);
+	
+	
+	// Initialize controller
+	PadInit(0);
+	
+}
+
 void PrepDisplay() {
 	
 	// Get active buffer ID and clear the OT to be processed for the next frame
@@ -211,236 +412,15 @@ void PrepDisplay() {
 	GsClearOt(0, 0, &myOT[myActiveBuff]);
 	
 }
-
-
-
-//DEBUGGING STUFF
-
-
-
-
-
-static void init_cube(DB *db, CVECTOR *col) {
-    size_t i;
-
-    for (i = 0; i < ARRAY_SIZE(db->s); ++i) {
-        SetPolyF4(&db->s[i]);
-        setRGB0(&db->s[i], col[i].r, col[i].g, col[i].b);
-    }
-}
-
-static void add_cube(u_long *ot, POLY_F4 *s, MATRIX *transform) {
-    long p, otz, flg;
-    int nclip;
-    size_t i;
-
-    
-
-    for (i = 0; i < ARRAY_SIZE(cube_indices); i += 4, ++s) {
-        nclip = RotAverageNclip4(&cube_vertices[cube_indices[i + 0]], &cube_vertices[cube_indices[i + 1]],
-                                 &cube_vertices[cube_indices[i + 2]], &cube_vertices[cube_indices[i + 3]],
-                                 (long *)&s->x0, (long *)&s->x1, (long *)&s->x3, (long *)&s->x2, &p, &otz, &flg);
-
-        if (nclip <= 0) continue;
-
-        if ((otz > 0) && (otz < OTSIZE)) AddPrim(&ot[otz], s);
-    }
-}
-
-
-void ApplyCamera(CAMERA *cam) {
+void Display() {
 	
-	// I really can't explain this, found it in one ofthe ZIMEN PsyQ examples
+	// Flush the font stream
+	FntFlush(-1);
 	
-	VECTOR	vec;
+	// Wait for VSync, switch buffers, and draw the new frame.
+	VSync(0);
+	GsSwapDispBuff();
+	GsSortClear(0, 64, 0, &myOT[myActiveBuff]);
+	GsDrawOt(&myOT[myActiveBuff]);
 	
-	RotMatrix(&cam->rot, &cam->mat);
-	
-	ApplyMatrixLV(&cam->mat, &cam->pos, &vec);	
-	
-	TransMatrix(&cam->mat, &vec);
-	SetRotMatrix(&cam->mat);
-	SetTransMatrix(&cam->mat);
-	
-}
-
-
-void hbuts(){
-    int speed= 3;
-	pad = PadRead(0);                             // Read pads input. id is unused, always 0.
-                                                      // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
-        // D-pad        
-        if(pad & PADLup)   {
-            FntPrint("up \n");
-            camera.tilv -= 4;
-             camera.pos.vx += speed;} // 🡩           // To access pad 2, use ( pad >> 16 & PADLup)...
-        if(pad & PADLdown) {FntPrint("down \n"); camera.tilv += 4;camera.pos.vx -= speed;} // 🡫
-        if(pad & PADLright){FntPrint("right \n"); camera.panv -= 4;camera.pos.vz += speed;} // 🡪
-        if(pad & PADLleft) {FntPrint("left \n"); camera.panv += 4;camera.pos.vz -= speed;} // 🡨
-        // Buttons
-        if(pad & PADRup)   {FntPrint("tri \n");
-		
-		} // △
-        if(pad & PADRdown) {FntPrint("X \n");
-		;
-		
-		} // ╳
-        if(pad & PADRright){FntPrint("O \n");
-		
-		camera.zv += (csin(camera.pan)*1);
-		camera.xv -= (ccos(camera.pan)*1);
-		} // ⭘
-        if(pad & PADRleft) {FntPrint("Sqr \n");} // ⬜
-        // Shoulder buttons
-        if(pad & PADL1){FntPrint("L1 \n");} // L1
-        if(pad & PADL2){FntPrint("L2 \n");} // L2
-        if(pad & PADR1){FntPrint("R1 \n");} // R1
-        if(pad & PADR2){FntPrint("R2 \n");} // R2
-        // Start & Select
-        if(pad & PADstart){FntPrint("Start \n");} // START
-        if(pad & PADselect){FntPrint("sel \n");}                                             // SELECT
-}
-
-
-void INIT(){
-
-    // Prepare the ordering tables
-	myOT[0].length	=OT_LENGTH;
-	myOT[1].length	=OT_LENGTH;
-	myOT[0].org		=myOT_TAG[0];
-	myOT[1].org		=myOT_TAG[1];
-
-    //GsClearOt(0, 0, &myOT[0]);
-	//GsClearOt(0, 0, &myOT[1]);
-
-    // Setup 3D and projection matrix
-	//GsInit3D();
-	//GsSetProjection(CENTERX);
-
-    //GsInitCoordinate2(WORLD, &camera.coord2);
-	
-
-    ReadcdInit();
-    ResetGraph(0);
-    InitGeom();
-    SetGraphDebug(0);
-    PadInit(0);
-    
-    opencd();  
-    //cd_read_file("GRID.TMD", &CDData[0]);
-	closecd();
-
-}
-
-int main(void) {
-
-    
-
-    DB db[2];
-    DB *cdb;
-    SVECTOR rotation = {0};
-    VECTOR translation = {0, 0, (SCREEN_Z * 3) / 2, 0};
-    MATRIX transform;
-    CVECTOR col[6];
-    size_t i;
-    VECTOR	plat_pos={0};
-	SVECTOR	plat_rot={0};
-    VECTOR	obj_pos={0};
-	SVECTOR	obj_rot={0};
-
-
-
-
-
-
-    
-    INIT();
-    
-
-    
-
-    //ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
-
-    FntLoad(960, 256);
-    SetDumpFnt(FntOpen(32, 32, 320, 64, 0, 512));
-
-    SetGeomOffset(320, 240);
-    SetGeomScreen(SCREEN_Z);
-
-    SetDefDrawEnv(&db[0].draw, 0, 0, 640, 480);
-    SetDefDrawEnv(&db[1].draw, 0, 0, 640, 480);
-    SetDefDispEnv(&db[0].disp, 0, 0, 640, 480);
-    SetDefDispEnv(&db[1].disp, 0, 0, 640, 480);
-
-    srand(0);
-
-    for (i = 0; i < ARRAY_SIZE(col); ++i) {
-        col[i].r = rand();
-        col[i].g = rand();
-        col[i].b = rand();
-    }
-
-    init_cube(&db[0], col);
-    init_cube(&db[1], col);
-
-    SetDispMask(1);
-
-    PutDrawEnv(&db[0].draw);
-    PutDispEnv(&db[0].disp);
-
-	
-
-    camera.pos.vx = -(camera.x/ONE);
-		camera.pos.vy = -(camera.y/ONE);
-		camera.pos.vz = -(camera.z/ONE);
-		
-		camera.rot.vx = camera.til;
-		camera.rot.vy = -camera.pan;
-        ApplyCamera(&camera);
-	
-    while (1) {
-        cdb = (cdb == &db[0]) ? &db[1] : &db[0];
-
-        //PrepDisplay();
-
-        
-
-        
-
-        ClearOTagR(cdb->ot, OTSIZE);
-
-        FntPrint("Main loop rn, \n \n input handle ");
-        
-        hbuts();
-
-        
-        FntPrint("%d, %d, %d",camera.pos.vx,camera.pos.vy,camera.pos.vz);
-
-
-
-
-       
-
-
-        // Sort the platform and bulb objects
-		//PutObject(plat_pos, plat_rot, &Object[0]);
-		
-		
-		// Sort our test object(s)
-		//for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
-		//	PutObject(obj_pos, obj_rot, &Object[i]);
-		//}
-        add_cube(cdb->ot, cdb->s, &transform);
-
-        // Wait for all drawing to finish and wait for VSync
-		while(DrawSync(1));
-		VSync(0);
-
-        ClearImage(&cdb->draw.clip, 60, 120, 120);
-
-        DrawOTag(&cdb->ot[OTSIZE - 1]);
-        FntFlush(-1);
-    }
-
-    return 0;
 }
