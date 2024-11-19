@@ -305,10 +305,10 @@ void hbuts(){
 void INIT(){
 
     // Prepare the ordering tables
-	//myOT[0].length	=OT_LENGTH;
-	//myOT[1].length	=OT_LENGTH;
-	//myOT[0].org		=myOT_TAG[0];
-	//myOT[1].org		=myOT_TAG[1];
+	myOT[0].length	=OT_LENGTH;
+	myOT[1].length	=OT_LENGTH;
+	myOT[0].org		=myOT_TAG[0];
+	myOT[1].org		=myOT_TAG[1];
 
     //GsClearOt(0, 0, &myOT[0]);
 	//GsClearOt(0, 0, &myOT[1]);
