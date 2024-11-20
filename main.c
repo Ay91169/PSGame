@@ -134,7 +134,7 @@ void log_pad_buffer(unsigned char *buffer, int size) {
 void handle_dualshock(unsigned char *pad_buffer) {
     // Access pad status
     unsigned short padstatus = PADTYPE.PadStatus;
-
+	
     // Joystick input
     unsigned char left_x = pad_buffer[6];  // Left stick X (strafing)
     unsigned char left_y = pad_buffer[7];  // Left stick Y (forward/backward)
@@ -160,7 +160,7 @@ void handle_dualshock(unsigned char *pad_buffer) {
 
     // ----------- Handle Left Stick (Movement) ------------
     int x_distance = left_x - 0x80;  // Strafe left/right distance
-    int y_distance = 0x80 - left_y;  // Forward/backward distance (inverted Y-axis)
+    int y_distance = left_y - 0x80;  // Forward/backward distance (inverted Y-axis)
 
     // Forward/backward movement (respecting camera pan)
     if (left_x < deadzone_min || left_x > deadzone_max) {
@@ -171,7 +171,7 @@ void handle_dualshock(unsigned char *pad_buffer) {
     // Strafe left/right movement (respecting camera pan)
     if (left_y < deadzone_min || left_y > deadzone_max) {
         Camera.x += (y_distance * movement_speed * csin(Camera.pan)) / ONE; // X-axis strafing
-        Camera.z -= (y_distance * movement_speed * ccos(Camera.pan)) / ONE; // Z-axis strafing
+        Camera.z += (y_distance * movement_speed * ccos(Camera.pan)) / ONE; // Z-axis strafing
     }
 
     // Up/down movement using R1/R2
@@ -194,7 +194,8 @@ void handle_dualshock(unsigned char *pad_buffer) {
 
     // Clamp pitch (rol) to prevent flipping
     Camera.rol = clamp(Camera.rol, -90 * ONE, 90 * ONE);
-
+	if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
+    if (Camera.pan < 0) Camera.pan += 4082;
     // ----------- Update Camera State ------------
     Camera.pos.vx += Camera.x; // Update position X
     Camera.pos.vy += Camera.y; // Update position Y
@@ -212,6 +213,8 @@ void handle_dualshock(unsigned char *pad_buffer) {
     // ----------- Update Render Vectors ------------
     Camera.rot.vx = -Camera.rol;  // Vertical rotation (pitch/rol)
     Camera.rot.vy = -Camera.pan; // Horizontal rotation (yaw)
+	
+	printf("PAN: %d",Camera.pan);
 }
 
 
@@ -287,10 +290,12 @@ void hbuts(){
 
 // Main stuff
 int main() {
-	
+	Camera.pan = 0; // Initialize pan to 0
+	printf("%d", Camera.pan);
 	PadInitDirect(pad_buffer,NULL);
 	PadSetAct(0,0,1);
 	PadStartCom();
+	
 	
     
 	int Accel;
@@ -352,9 +357,9 @@ int main() {
 		
 		//hbuts();
 		
-		log_pad_buffer(pad_buffer,34);	
+		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
-
+		
 		// Prepare for rendering
 		PrepDisplay();
 		
@@ -391,7 +396,7 @@ int main() {
 		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
 			PutObject(obj_pos, obj_rot, &Object[i]);
 		}
-		
+		FntPrint("PAN: %i",Camera.pan);
 		
 		// Display the new frame
 		Display();
