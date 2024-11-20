@@ -76,6 +76,7 @@ int ctr;
 static unsigned char align[6]={0,1,0xFF,0xFF,0xFF,0xFF};
 
 unsigned char pad_buffer[34];
+#define DEADZONE 5
 
 
 #define DUALSHOCKMODE ((u_long *)0x80010000)
@@ -116,11 +117,78 @@ void log_pad_buffer(unsigned char *buffer, int size) {
 }
 
 
+
+
+void handle_movement(unsigned char lx, unsigned char ly, const char* stick_name) {
+    // Define the deadzone boundary values
+    unsigned char deadzone_min = 0x50;
+    unsigned char deadzone_max = 0xBC;
+
+    // Movement speed factor based on distance from the center (0x80)
+    int speed_factor;
+    
+    // Calculate the distance from center (0x80) for both X and Y
+    int x_distance = lx - 0x80;
+    int y_distance = ly - 0x80;
+
+    // If within the deadzone, ignore movement
+    if (lx >= deadzone_min && lx <= deadzone_max) {
+        printf("%s X-Axis Deadzone\n", stick_name);
+        x_distance = 0;
+    } else {
+        // Speed based on the distance from center
+        speed_factor = (x_distance > 0) ? x_distance : -x_distance;
+        printf("%s X-Axis Speed: %d\n", stick_name, speed_factor);  // Display the speed factor for debugging
+    }
+
+    if (ly >= deadzone_min && ly <= deadzone_max) {
+        printf("%s Y-Axis Deadzone\n", stick_name);
+        y_distance = 0;
+    } else {
+        // Speed based on the distance from center
+        speed_factor = (y_distance > 0) ? y_distance : -y_distance;
+        printf("%s Y-Axis Speed: %d\n", stick_name, speed_factor);  // Display the speed factor for debugging
+    }
+
+    // Horizontal movement: left or right based on the X-axis value
+    if (x_distance < 0) {
+        printf("%s Move Left with Speed %d\n", stick_name, speed_factor);
+    } else if (x_distance > 0) {
+        printf("%s Move Right with Speed %d\n", stick_name, speed_factor);
+    }
+
+    // Vertical movement: up or down based on the Y-axis value
+    if (y_distance < 0) {
+        printf("%s Move Up with Speed %d\n", stick_name, speed_factor);
+    } else if (y_distance > 0) {
+        printf("%s Move Down with Speed %d\n", stick_name, speed_factor);
+    }
+}
+
+void handle_dualshock(unsigned char *pad_buffer) {
+    // Left stick (X and Y axes)
+    unsigned char left_x = pad_buffer[6];
+    unsigned char left_y = pad_buffer[7];
+
+    // Right stick (X and Y axes)
+    unsigned char right_x = pad_buffer[4];
+    unsigned char right_y = pad_buffer[5];
+
+    printf("Processing Left Stick:\n");
+    handle_movement(left_x, left_y, "Left Stick");
+
+    printf("Processing Right Stick:\n");
+    handle_movement(right_x, right_y, "Right Stick");
+}
+
 //debug code
 
 
 void hbuts(){
     int speed= 3;
+
+	
+	handle_dualshock(pad_buffer);
 	
 
 	
@@ -272,8 +340,8 @@ int main() {
 		
 		hbuts();
 		
-		//log_pad_buffer(pad_buffer,34);	
-		FntPrint("Left Stick Y-Axis: %02X\n, %02X \n", pad_buffer[7],pad_buffer[6]);
+		log_pad_buffer(pad_buffer,34);	
+		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 
 		// Prepare for rendering
 		PrepDisplay();
