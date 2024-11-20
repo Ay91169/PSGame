@@ -48,7 +48,7 @@ int			myActiveBuff=0;					// Page index counter
 // Camera coordinates
 struct {
 	int		x,y,z;
-	int		pan,til,rol,panv;
+	int		pan,til,rol,panv,tilv;
     
 	VECTOR	pos;
 	SVECTOR rot;
@@ -106,7 +106,23 @@ void Display();
 
 
 
+
+
+
+
 //debug code
+int distxx;
+int distyy;
+
+
+
+
+// Clamping function to restrict values within a range
+int clamp(int value, int min, int max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
 
 void log_pad_buffer(unsigned char *buffer, int size) {
     printf("Controller Buffer: ");
@@ -119,67 +135,101 @@ void log_pad_buffer(unsigned char *buffer, int size) {
 
 
 
-void handle_movement(unsigned char lx, unsigned char ly, const char* stick_name) {
-    // Define the deadzone boundary values
-    unsigned char deadzone_min = 0x50;
-    unsigned char deadzone_max = 0xBC;
+void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
+    // Access pad status
+    unsigned short padstatus = PADTYPE.PadStatus;
+	
+    // Joystick input
+    unsigned char left_x = pad_buffer[6];  // Left stick X (strafing)
+    unsigned char left_y = pad_buffer[7];  // Left stick Y (forward/backward)
+    unsigned char right_x = pad_buffer[4]; // Right stick X (yaw/pan)
+    unsigned char right_y = pad_buffer[5]; // Right stick Y (pitch/rol)
 
-    // Movement speed factor based on distance from the center (0x80)
-    int speed_factor;
-    
-    // Calculate the distance from center (0x80) for both X and Y
-    int x_distance = lx - 0x80;
-    int y_distance = ly - 0x80;
+    // Deadzone values
+    const unsigned char deadzone_min = 0x60;
+    const unsigned char deadzone_max = 0xA0;
 
-    // If within the deadzone, ignore movement
-    if (lx >= deadzone_min && lx <= deadzone_max) {
-        printf("%s X-Axis Deadzone\n", stick_name);
-        x_distance = 0;
-    } else {
-        // Speed based on the distance from center
-        speed_factor = (x_distance > 0) ? x_distance : -x_distance;
-        printf("%s X-Axis Speed: %d\n", stick_name, speed_factor);  // Display the speed factor for debugging
+    // Scaling factors
+    int movement_speed = 1;  // Fixed-point movement speed (scaled down for better control)
+    int rotation_speed = 16;  // Rotation sensitivity
+
+    // Reset camera when Select is pressed
+    if (padstatus & PADselect) {
+        Camera.pos.vx = Camera.pos.vy = Camera.pos.vz = 0;
+        Camera.pan = Camera.til = Camera.rol = 0;
+        Camera.x = Camera.y = Camera.z = 0;
+        Camera.panv = 0;
+        return;
     }
 
-    if (ly >= deadzone_min && ly <= deadzone_max) {
-        printf("%s Y-Axis Deadzone\n", stick_name);
-        y_distance = 0;
-    } else {
-        // Speed based on the distance from center
-        speed_factor = (y_distance > 0) ? y_distance : -y_distance;
-        printf("%s Y-Axis Speed: %d\n", stick_name, speed_factor);  // Display the speed factor for debugging
+    // ----------- Handle Left Stick (Movement) ------------
+    int x_distance = (left_x - 0x7F) / 3;  // Strafe left/right distance
+    int y_distance = (left_y - 0x7F) / 3;  // Forward/backward distance (inverted Y-axis)
+	distx = x_distance;
+	disty = y_distance;
+    // Forward/backward movement (respecting camera pan)
+    if (left_x < deadzone_min || left_x > deadzone_max) {
+        Camera.x -= (x_distance * movement_speed * ccos(Camera.pan)) / ONE; // X-axis forward/backward
+        Camera.z += (x_distance * movement_speed * csin(Camera.pan)) / ONE; // Z-axis forward/backward
     }
 
-    // Horizontal movement: left or right based on the X-axis value
-    if (x_distance < 0) {
-        printf("%s Move Left with Speed %d\n", stick_name, speed_factor);
-    } else if (x_distance > 0) {
-        printf("%s Move Right with Speed %d\n", stick_name, speed_factor);
+    // Strafe left/right movement (respecting camera pan)
+    if (left_y < deadzone_min || left_y > deadzone_max) {
+        Camera.x += (y_distance * movement_speed * csin(Camera.pan)) / ONE; // X-axis strafing
+        Camera.z += (y_distance * movement_speed * ccos(Camera.pan)) / ONE; // Z-axis strafing
     }
 
-    // Vertical movement: up or down based on the Y-axis value
-    if (y_distance < 0) {
-        printf("%s Move Up with Speed %d\n", stick_name, speed_factor);
-    } else if (y_distance > 0) {
-        printf("%s Move Down with Speed %d\n", stick_name, speed_factor);
+    // Up/down movement using R1/R2
+    if (padstatus & PADR1) Camera.y += movement_speed;  // Move up
+    if (padstatus & PADR2) Camera.y -= movement_speed;  // Move down
+
+    // ----------- Handle Right Stick (Rotation) ------------
+    int pan_distance = right_x - 0x80; // Horizontal rotation (yaw)
+    int tilt_distance = right_y - 0x80; // Vertical rotation (pitch/rol)
+
+    // Yaw (pan) rotation
+    if (right_x < deadzone_min || right_x > deadzone_max) {
+        Camera.panv += (pan_distance * rotation_speed) / 128; // Adjust yaw velocity
     }
+
+    // Pitch (rol) rotation
+    if (right_y < deadzone_min || right_y > deadzone_max) {
+        Camera.rol -= (tilt_distance * rotation_speed) / 128; // Adjust pitch/rol (invert Y-axis if needed)
+    }
+
+    // Clamp pitch (rol) to prevent flipping
+	Camera.rol = clamp(Camera.rol, -800, 800);
+	Camera.panv = clamp(Camera.panv, -90 * ONE, 90 * ONE);
+	if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
+    if (Camera.pan < 0) Camera.pan += 4082;
+    // ----------- Update Camera State ------------
+    Camera.pos.vx += Camera.x; // Update position X
+    Camera.pos.vy += Camera.y; // Update position Y
+    Camera.pos.vz += Camera.z; // Update position Z
+
+    Camera.pan += Camera.panv; // Update yaw rotation
+
+    // ----------- Apply Damping ------------
+    Camera.x = (Camera.x * 3) / 10; // Smooth deceleration for movement
+    Camera.y = (Camera.y * 3) / 10;
+    Camera.z = (Camera.z * 3) / 10;
+
+    Camera.panv = (Camera.panv * 3) / 10; // Smooth deceleration for yaw
+
+    // ----------- Update Render Vectors ------------
+    Camera.rot.vx = -Camera.rol;  // Vertical rotation (pitch/rol)
+    Camera.rot.vy = -Camera.pan; // Horizontal rotation (yaw)
+	
+	printf("PAN: %d",Camera.pan);
+	printf("Distance X y: %i, %i",x_distance,y_distance);
 }
 
-void handle_dualshock(unsigned char *pad_buffer) {
-    // Left stick (X and Y axes)
-    unsigned char left_x = pad_buffer[6];
-    unsigned char left_y = pad_buffer[7];
 
-    // Right stick (X and Y axes)
-    unsigned char right_x = pad_buffer[4];
-    unsigned char right_y = pad_buffer[5];
 
-    printf("Processing Left Stick:\n");
-    handle_movement(left_x, left_y, "Left Stick");
 
-    printf("Processing Right Stick:\n");
-    handle_movement(right_x, right_y, "Right Stick");
-}
+
+
+
 
 //debug code
 
@@ -188,16 +238,13 @@ void hbuts(){
     int speed= 3;
 
 	
-	handle_dualshock(pad_buffer);
+	handle_dualshock(pad_buffer,distxx,distyy);
 	
 
 	
 
 	PADTYPE.PadStatus = PadRead(0);                             // Read pads input. id is unused, always 0.
-	PADTYPE.ljoy_v = PadRead(0);
-	PADTYPE.ljoy_h = PadRead(0);
-	PADTYPE.rjoy_h = PadRead(0);
-	PADTYPE.rjoy_v = PadRead(0);
+	
                                                       // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
         // D-pad
 
@@ -243,42 +290,19 @@ void hbuts(){
 		if(PADTYPE.PadStatus & PADR3){FntPrint("R3 \n");}
 		if(PADTYPE.PadStatus & PADL3){FntPrint("L3 \n");}   
 
-	int leftStickX = PADTYPE.ljoy_h; // Left stick X-axis (0–255)
-    int leftStickY = PADTYPE.ljoy_v; // Left stick Y-axis (0–255)
-    int rightStickX = PADTYPE.rjoy_h; // Right stick X-axis (0–255)
-    int rightStickY = PADTYPE.rjoy_v; // Right stick Y-axis (0–255)
-
-	// Center is around 128, so we calculate offset
-    int leftX = leftStickX - 128; // -128 to 127
-    int leftY = leftStickY - 128; // -128 to 127
-    int rightX = rightStickX - 128; // -128 to 127
-    int rightY = rightStickY - 128; // -128 to 127
-
-	// Log the analog stick values
-    //printf("Left Stick: X=%d Y=%d\n", leftX, leftY);
-    //printf("Right Stick: X=%d Y=%d\n", rightX, rightY);
-	if (leftX > 10) { // Add deadzone for smoother control
-        Camera.pos.vx += leftX / 10; // Adjust divisor for sensitivity
-    }
-    if (leftY > 10) {
-        Camera.pos.vz += leftY / 10;
-    }
-    if (rightX > 10) {
-        Camera.panv += rightX / 10;
-    }
-    if (rightY > 10) {
-        Camera.rol += rightY / 10;
-    }
+	
 
 }
 
 
 // Main stuff
 int main() {
-	
+	Camera.pan = 0; // Initialize pan to 0
+	printf("%d", Camera.pan);
 	PadInitDirect(pad_buffer,NULL);
 	PadSetAct(0,0,1);
 	PadStartCom();
+	
 	
     
 	int Accel;
@@ -334,15 +358,16 @@ int main() {
 	bulb_pos.vz = -800;
 	bulb_pos.vy = -400;
 	obj_pos.vy = 400;
-	
+	VSyncCallback(hbuts);
 	
 	while(1) {
 		
-		hbuts();
+		//hbuts();
 		
-		log_pad_buffer(pad_buffer,34);	
+		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
-
+		
+		
 		// Prepare for rendering
 		PrepDisplay();
 		
@@ -351,6 +376,7 @@ int main() {
 		
 		FntPrint(" CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		FntPrint("distxy: %i, %i", distxx,distyy);
 		
 		
 		// Calculate the camera and viewpoint matrix
@@ -379,7 +405,7 @@ int main() {
 		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
 			PutObject(obj_pos, obj_rot, &Object[i]);
 		}
-		
+		FntPrint("PAN: %i",Camera.pan);
 		
 		// Display the new frame
 		Display();
