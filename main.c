@@ -11,11 +11,13 @@
 
 //FUNCS
 #include "dep/CDread.h"
+#include "dep/aud.h"
 
 
 
 // TMD models
 #include "models/PT.c"
+#include "sounds/to.c"
 
 
 
@@ -304,8 +306,10 @@ int main() {
 	PadStartCom();
 	
 	
+	
     
 	int Accel;
+	int bc = 0;
 	
 	// Object coordinates
 	VECTOR	plat_pos={0};
@@ -378,6 +382,13 @@ int main() {
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
 		FntPrint("distxy: %i, %i", distxx,distyy);
 		
+		if(pad_buffer[9] == 0x00){
+			bc = 1;
+		}
+
+		if(bc == 1){
+			
+		}
 		
 		// Calculate the camera and viewpoint matrix
 		CalculateCamera();
