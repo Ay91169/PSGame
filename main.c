@@ -48,7 +48,7 @@ int			myActiveBuff=0;					// Page index counter
 // Camera coordinates
 struct {
 	int		x,y,z;
-	int		pan,til,rol,panv;
+	int		pan,til,rol,panv,tilv;
     
 	VECTOR	pos;
 	SVECTOR rot;
@@ -106,7 +106,19 @@ void Display();
 
 
 
+
+
+
+
 //debug code
+
+
+// Clamping function to restrict values within a range
+int clamp(int value, int min, int max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
 
 void log_pad_buffer(unsigned char *buffer, int size) {
     printf("Controller Buffer: ");
@@ -123,79 +135,89 @@ void handle_dualshock(unsigned char *pad_buffer) {
     // Access pad status
     unsigned short padstatus = PADTYPE.PadStatus;
 
-    // Left stick (X and Y axes for movement)
-    unsigned char left_x = pad_buffer[6];
-    unsigned char left_y = pad_buffer[7];
+    // Joystick input
+    unsigned char left_x = pad_buffer[6];  // Left stick X (strafing)
+    unsigned char left_y = pad_buffer[7];  // Left stick Y (forward/backward)
+    unsigned char right_x = pad_buffer[4]; // Right stick X (yaw/pan)
+    unsigned char right_y = pad_buffer[5]; // Right stick Y (pitch/rol)
 
-    // Right stick (X and Y axes for aiming/rotation)
-    unsigned char right_x = pad_buffer[4];
-    unsigned char right_y = pad_buffer[5];
-
-    // Deadzone values to avoid unintentional movement near the center (neutral stick position)
+    // Deadzone values
     const unsigned char deadzone_min = 0x60;
     const unsigned char deadzone_max = 0xA0;
 
-    // Movement scaling factor
-    int movement_speed = 3;  // Adjust to control movement sensitivity
+    // Scaling factors
+    int movement_speed = 1;  // Fixed-point movement speed (scaled down for better control)
+    int rotation_speed = 16;  // Rotation sensitivity
 
-    // Rotation scaling factor for the right stick
-    int rotation_sensitivity = 40;  // Higher values = slower rotation
+    // Reset camera when Select is pressed
+    if (padstatus & PADselect) {
+        Camera.pos.vx = Camera.pos.vy = Camera.pos.vz = 0;
+        Camera.pan = Camera.til = Camera.rol = 0;
+        Camera.x = Camera.y = Camera.z = 0;
+        Camera.panv = 0;
+        return;
+    }
 
     // ----------- Handle Left Stick (Movement) ------------
-    int x_distance = left_x - 0x80;  // Distance from center
-    int y_distance = 0x80 - left_y;  // Reverse the Y-axis interpretation
+    int x_distance = left_x - 0x80;  // Strafe left/right distance
+    int y_distance = 0x80 - left_y;  // Forward/backward distance (inverted Y-axis)
 
-    if (left_x < deadzone_min || left_x > deadzone_max) {  // Horizontal movement
-        Camera.pos.vx += (x_distance * movement_speed) / 128;  // Scale movement
+    // Forward/backward movement (respecting camera pan)
+    if (left_x < deadzone_min || left_x > deadzone_max) {
+        Camera.x -= (x_distance * movement_speed * ccos(Camera.pan)) / ONE; // X-axis forward/backward
+        Camera.z += (x_distance * movement_speed * csin(Camera.pan)) / ONE; // Z-axis forward/backward
     }
 
-    if (left_y < deadzone_min || left_y > deadzone_max) {  // Vertical movement
-        Camera.pos.vz -= (y_distance * movement_speed) / 128;  // Flip Y-axis for correct forward/backward
+    // Strafe left/right movement (respecting camera pan)
+    if (left_y < deadzone_min || left_y > deadzone_max) {
+        Camera.x += (y_distance * movement_speed * csin(Camera.pan)) / ONE; // X-axis strafing
+        Camera.z -= (y_distance * movement_speed * ccos(Camera.pan)) / ONE; // Z-axis strafing
     }
 
-    // Adjust height (Y-axis) directly using buttons
-    if (padstatus & PADR1) Camera.pos.vy += movement_speed;  // Move up
-    if (padstatus & PADR2) Camera.pos.vy -= movement_speed;  // Move down
+    // Up/down movement using R1/R2
+    if (padstatus & PADR1) Camera.y += movement_speed;  // Move up
+    if (padstatus & PADR2) Camera.y -= movement_speed;  // Move down
 
     // ----------- Handle Right Stick (Rotation) ------------
-    int pan_distance = right_x - 0x80;  // Horizontal rotation
-    int tilt_distance = right_y - 0x80; // Vertical rotation
+    int pan_distance = right_x - 0x80; // Horizontal rotation (yaw)
+    int tilt_distance = right_y - 0x80; // Vertical rotation (pitch/rol)
 
+    // Yaw (pan) rotation
     if (right_x < deadzone_min || right_x > deadzone_max) {
-        Camera.panv += pan_distance / rotation_sensitivity;  // Scale rotation
+        Camera.panv += (pan_distance * rotation_speed) / 128; // Adjust yaw velocity
     }
 
-    if (right_y < deadzone_min || right_y > deadzone_max) {  // Fix: Ensure Y-axis rotation is processed
-        Camera.til -= tilt_distance / rotation_sensitivity;  // Scale rotation (invert Y-axis if needed)
+    // Pitch (rol) rotation
+    if (right_y < deadzone_min || right_y > deadzone_max) {
+        Camera.rol -= (tilt_distance * rotation_speed) / 128; // Adjust pitch/rol (invert Y-axis if needed)
     }
 
-    // ----------- Update Camera Position and Rotation ------------
-    // Update position based on velocity
-    Camera.pos.vx += Camera.x;
-    Camera.pos.vy += Camera.y;
-    Camera.pos.vz += Camera.z;
+    // Clamp pitch (rol) to prevent flipping
+    Camera.rol = clamp(Camera.rol, -90 * ONE, 90 * ONE);
 
-    // Apply rotation changes
-    Camera.pan += Camera.panv;
-    Camera.til += Camera.til;
+    // ----------- Update Camera State ------------
+    Camera.pos.vx += Camera.x; // Update position X
+    Camera.pos.vy += Camera.y; // Update position Y
+    Camera.pos.vz += Camera.z; // Update position Z
 
-    // ----------- Damping for Smooth Movement ------------
-    // Damping to gradually slow movement and rotation
-    Camera.x = (Camera.x * 9) / 10;
-    Camera.y = (Camera.y * 9) / 10;
-    Camera.z = (Camera.z * 9) / 10;
-    Camera.panv = (Camera.panv * 9) / 10;
+    Camera.pan += Camera.panv; // Update yaw rotation
 
-    // Clamp tilt to prevent flipping
-    if (Camera.til > 90) Camera.til = 90;
-    if (Camera.til < -90) Camera.til = -90;
-	if (Camera.panv > 180) Camera.panv = 180;
-    if (Camera.panv < -180) Camera.panv = -180;
+    // ----------- Apply Damping ------------
+    Camera.x = (Camera.x * 3) / 10; // Smooth deceleration for movement
+    Camera.y = (Camera.y * 3) / 10;
+    Camera.z = (Camera.z * 3) / 10;
 
-    // Update Camera.rot for rendering (used by Gs functions)
-    Camera.rot.vx = -Camera.til;  // Set pitch
-    Camera.rot.vy = -Camera.pan;  // Set yaw
+    Camera.panv = (Camera.panv * 3) / 10; // Smooth deceleration for yaw
+
+    // ----------- Update Render Vectors ------------
+    Camera.rot.vx = -Camera.rol;  // Vertical rotation (pitch/rol)
+    Camera.rot.vy = -Camera.pan; // Horizontal rotation (yaw)
 }
+
+
+
+
+
 
 
 
@@ -212,10 +234,7 @@ void hbuts(){
 	
 
 	PADTYPE.PadStatus = PadRead(0);                             // Read pads input. id is unused, always 0.
-	PADTYPE.ljoy_v = PadRead(0);
-	PADTYPE.ljoy_h = PadRead(0);
-	PADTYPE.rjoy_h = PadRead(0);
-	PADTYPE.rjoy_v = PadRead(0);
+	
                                                       // PadRead() returns a 32 bit value, where input from pad 1 is stored in the low 2 bytes and input from pad 2 is stored in the high 2 bytes. (https://matiaslavik.wordpress.com/2015/02/13/diving-into-psx-development/)
         // D-pad
 
@@ -261,32 +280,7 @@ void hbuts(){
 		if(PADTYPE.PadStatus & PADR3){FntPrint("R3 \n");}
 		if(PADTYPE.PadStatus & PADL3){FntPrint("L3 \n");}   
 
-	int leftStickX = PADTYPE.ljoy_h; // Left stick X-axis (0–255)
-    int leftStickY = PADTYPE.ljoy_v; // Left stick Y-axis (0–255)
-    int rightStickX = PADTYPE.rjoy_h; // Right stick X-axis (0–255)
-    int rightStickY = PADTYPE.rjoy_v; // Right stick Y-axis (0–255)
-
-	// Center is around 128, so we calculate offset
-    int leftX = leftStickX - 128; // -128 to 127
-    int leftY = leftStickY - 128; // -128 to 127
-    int rightX = rightStickX - 128; // -128 to 127
-    int rightY = rightStickY - 128; // -128 to 127
-
-	// Log the analog stick values
-    //printf("Left Stick: X=%d Y=%d\n", leftX, leftY);
-    //printf("Right Stick: X=%d Y=%d\n", rightX, rightY);
-	if (leftX > 10) { // Add deadzone for smoother control
-        Camera.pos.vx += leftX / 10; // Adjust divisor for sensitivity
-    }
-    if (leftY > 10) {
-        Camera.pos.vz += leftY / 10;
-    }
-    if (rightX > 10) {
-        Camera.panv += rightX / 10;
-    }
-    if (rightY > 10) {
-        Camera.rol += rightY / 10;
-    }
+	
 
 }
 
