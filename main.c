@@ -111,6 +111,10 @@ void Display();
 
 
 //debug code
+int distxx;
+int distyy;
+
+
 
 
 // Clamping function to restrict values within a range
@@ -131,7 +135,7 @@ void log_pad_buffer(unsigned char *buffer, int size) {
 
 
 
-void handle_dualshock(unsigned char *pad_buffer) {
+void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     // Access pad status
     unsigned short padstatus = PADTYPE.PadStatus;
 	
@@ -159,9 +163,10 @@ void handle_dualshock(unsigned char *pad_buffer) {
     }
 
     // ----------- Handle Left Stick (Movement) ------------
-    int x_distance = left_x - 0x80;  // Strafe left/right distance
-    int y_distance = left_y - 0x80;  // Forward/backward distance (inverted Y-axis)
-
+    int x_distance = (left_x - 0x7F) / 3;  // Strafe left/right distance
+    int y_distance = (left_y - 0x7F) / 3;  // Forward/backward distance (inverted Y-axis)
+	distx = x_distance;
+	disty = y_distance;
     // Forward/backward movement (respecting camera pan)
     if (left_x < deadzone_min || left_x > deadzone_max) {
         Camera.x -= (x_distance * movement_speed * ccos(Camera.pan)) / ONE; // X-axis forward/backward
@@ -193,7 +198,8 @@ void handle_dualshock(unsigned char *pad_buffer) {
     }
 
     // Clamp pitch (rol) to prevent flipping
-    Camera.rol = clamp(Camera.rol, -90 * ONE, 90 * ONE);
+	Camera.rol = clamp(Camera.rol, -800, 800);
+	Camera.panv = clamp(Camera.panv, -90 * ONE, 90 * ONE);
 	if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
     if (Camera.pan < 0) Camera.pan += 4082;
     // ----------- Update Camera State ------------
@@ -215,6 +221,7 @@ void handle_dualshock(unsigned char *pad_buffer) {
     Camera.rot.vy = -Camera.pan; // Horizontal rotation (yaw)
 	
 	printf("PAN: %d",Camera.pan);
+	printf("Distance X y: %i, %i",x_distance,y_distance);
 }
 
 
@@ -231,7 +238,7 @@ void hbuts(){
     int speed= 3;
 
 	
-	handle_dualshock(pad_buffer) ;
+	handle_dualshock(pad_buffer,distxx,distyy);
 	
 
 	
@@ -360,6 +367,7 @@ int main() {
 		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
+		
 		// Prepare for rendering
 		PrepDisplay();
 		
@@ -368,6 +376,7 @@ int main() {
 		
 		FntPrint(" CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		FntPrint("distxy: %i, %i", distxx,distyy);
 		
 		
 		// Calculate the camera and viewpoint matrix
