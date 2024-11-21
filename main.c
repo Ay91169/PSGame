@@ -378,6 +378,23 @@ int main() {
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
 		FntPrint("distxy: %i, %i", distxx,distyy);
 		
+<<<<<<< Updated upstream
+=======
+		if(pad_buffer[3] == 0xBF){
+			printf("STRIKE!");
+			bc = 1;
+		}
+
+		if(bc == 1){
+			if(!find_xa_file("\\SOUNDS\\O.XA;1")){
+				printf("not found");
+			}
+			else {
+				play_xa_audio("\\SOUNDS\\O.XA;1");
+				bc = 2;
+			}
+		}
+>>>>>>> Stashed changes
 		
 		// Calculate the camera and viewpoint matrix
 		CalculateCamera();
