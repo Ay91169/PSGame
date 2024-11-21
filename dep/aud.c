@@ -24,6 +24,7 @@ void play_xa_audio(char *filename) {
     // Seek to the file's start position
     CdControl(CdlSeekL, (unsigned char *)&xa_file.pos, 0);
 
+    printf("current mode: %d \n", mode);
     // Start XA playback
     if (CdPlay(mode, &track, 0)) { // Track 1, Sub-track 1 (adjust as needed)
         printf("Playing XA audio.\n");

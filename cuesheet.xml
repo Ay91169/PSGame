@@ -7,9 +7,9 @@
             application="PLAYSTATION"
             volume="MYDISC"
             volume_set="MYDISC"
-            publisher="ME"
+            publisher="abyss"
             data_preparer="MKPSXISO"
-            copyright="COPYLEFT"
+            copyright="abysprd"
         />
         
         <directory_tree>
