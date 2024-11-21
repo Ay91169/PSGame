@@ -8,12 +8,11 @@
 #include <pad.h>
 #include <stdio.h>
 #include <abs.h>
+#include <libcd.h>
 
 //FUNCS
 #include "dep/CDread.h"
 #include "dep/aud.h"
-
-
 
 // TMD models
 #include "models/PT.c"
@@ -78,6 +77,7 @@ int ctr;
 static unsigned char align[6]={0,1,0xFF,0xFF,0xFF,0xFF};
 
 unsigned char pad_buffer[34];
+unsigned char pad_buffer2[34];
 #define DEADZONE 5
 
 
@@ -222,8 +222,8 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     Camera.rot.vx = -Camera.rol;  // Vertical rotation (pitch/rol)
     Camera.rot.vy = -Camera.pan; // Horizontal rotation (yaw)
 	
-	printf("PAN: %d",Camera.pan);
-	printf("Distance X y: %i, %i",x_distance,y_distance);
+	//printf("PAN: %d",Camera.pan);
+	//printf("Distance X y: %i, %i",x_distance,y_distance);
 }
 
 
@@ -300,8 +300,7 @@ void hbuts(){
 // Main stuff
 int main() {
 	Camera.pan = 0; // Initialize pan to 0
-	printf("%d", Camera.pan);
-	PadInitDirect(pad_buffer,NULL);
+	PadInitDirect(pad_buffer,pad_buffer2);
 	PadSetAct(0,0,1);
 	PadStartCom();
 	
@@ -382,12 +381,19 @@ int main() {
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
 		FntPrint("distxy: %i, %i", distxx,distyy);
 		
-		if(pad_buffer[9] == 0x00){
+		if(pad_buffer[3] == 0xBF){
+			printf("STRIKE!");
 			bc = 1;
 		}
 
 		if(bc == 1){
-			
+			if(!find_xa_file("\\SOUNDS\\TO.XA;1")){
+				printf("not found");
+			}
+			else {
+				play_xa_audio("\\SOUNDS\\TO.XA;1");
+				bc = 2;
+			}
 		}
 		
 		// Calculate the camera and viewpoint matrix
@@ -555,6 +561,9 @@ void LoadTexture(u_long *addr) {
 
 void init() {
 	
+	CdInit();
+	
+
 	SVECTOR VScale={0};
 	
 	// Initialize the GS
@@ -619,7 +628,7 @@ void Display() {
 	// Wait for VSync, switch buffers, and draw the new frame.
 	VSync(0);
 	GsSwapDispBuff();
-	GsSortClear(0, 64, 0, &myOT[myActiveBuff]);
+	GsSortClear(120, 120, 120, &myOT[myActiveBuff]);
 	GsDrawOt(&myOT[myActiveBuff]);
 	
 }
