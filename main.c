@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <abs.h>
 #include <libcd.h>
+#include <libspu.h>
 
 //FUNCS
 #include "dep/CDread.h"
@@ -58,7 +59,7 @@ struct {
 } Camera = {0};
 
 int i;
-
+SpuCommonAttr spuSettings;
 
 
 struct {
@@ -331,7 +332,30 @@ int main() {
 	
 	
 	// Init everything
-	init();
+	init();	   
+    // SPU setup
+    // Init Spu
+    SpuInit();
+    // Set master & CD volume to max
+    spuSettings.mask = (SPU_COMMON_MVOLL | SPU_COMMON_MVOLR | SPU_COMMON_CDVOLL | SPU_COMMON_CDVOLR | SPU_COMMON_CDMIX);
+    spuSettings.mvol.left  = 0x6000;
+    spuSettings.mvol.right = 0x6000;
+    spuSettings.cd.volume.left = 0x6000;
+    spuSettings.cd.volume.right = 0x6000;
+    // Enable CD input ON
+    spuSettings.cd.mix = SPU_ON;
+    // Apply settings
+    SpuSetCommonAttr(&spuSettings);
+    // Set transfer mode 
+    SpuSetTransferMode(SPU_TRANSFER_BY_DMA);
+
+
+
+
+
+
+
+
 	
 	
 	// Load the texture for our test model
@@ -387,11 +411,11 @@ int main() {
 		}
 
 		if(bc == 1){
-			if(!find_xa_file("\\SOUNDS\\TO.XA;1")){
+			if(!find_xa_file("\\SOUNDS\\INTER4.XA;1")){
 				printf("not found");
 			}
 			else {
-				play_xa_audio("\\SOUNDS\\TO.XA;1");
+				play_xa_audio("\\SOUNDS\\INTER4.XA;1");
 				bc = 2;
 			}
 		}
@@ -426,6 +450,7 @@ int main() {
 		
 		// Display the new frame
 		Display();
+		printf("test: %i", CurPos);
 		
 	}
 	
