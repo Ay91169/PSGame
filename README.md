@@ -12,7 +12,6 @@ Because i wanna save my progress on github and come back to it anytime. and to L
 
 - get [vscode](https://code.visualstudio.com/download)
 - add my fork to the folder.(third_party) or dont
-- 
 - get [PSX.DEV](https://marketplace.visualstudio.com/items?itemName=Grumpycoders.psx-dev) plugin
 - install Psy-Q SDK with Nugget
 - open this folder. then run at top bar ```Build  Debug``` 
