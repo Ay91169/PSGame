@@ -18,7 +18,7 @@ Because i wanna save my progress on github and come back to it anytime. and to L
 - then debug it. should work
 
 ## Screenshots (coming soon for now)
-
+![Game screenshot](https://github.com/Ay91169/PSGame/blob/main/Ssgame.png)
 
 
 
@@ -27,3 +27,5 @@ Because i wanna save my progress on github and come back to it anytime. and to L
 Starting now ill put my updates here in single sentences. 
 
 - added a FPS camera movment (FOR DUALSHOCK).
+- added Working Music. (for now silent hill music).
+- Added Screenshot to readme.
