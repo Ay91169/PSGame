@@ -43,7 +43,7 @@ void play_xa_audio(char *filename) {
     EndPos = track.end;
 
     u_char param[1];
-    param[0] = CdlModeRT | CdlModeSF;
+    param[0] = CdlModeSpeed|CdlModeRT|CdlModeSF|CdlModeSize1;
     CdControlB(CdlSetmode, param, NULL);
     printf("CD mode set to XA playback.\n");
     
@@ -75,6 +75,8 @@ void play_xa_audio(char *filename) {
         printf("Error: Unable to start XA playback.\n");
         return;
     }
+
+    printf("CD status after playback start: %02X\n", CdStatus());
 
     gPlaying = 1;
     printf("Playing XA audio from sector %d to %d on channel %d.\n", StartPos, EndPos, channel);

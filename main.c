@@ -342,6 +342,7 @@ int main() {
     attr.mvol.right = 0x3FFF;  // Max right volume
     attr.cd.mix = SPU_ON;      // Enable CD-XA mixing
     SpuSetCommonAttr(&attr);
+	SpuSetTransferMode(SPU_TRANSFER_BY_DMA);	
 
     printf("SPU initialized for XA playback.\n");
 
@@ -410,11 +411,11 @@ int main() {
 		}
 
 		if(bc == 1){
-			if(!find_xa_file("\\SOUNDS\\INTER4.XA;1")){
+			if(!find_xa_file("\\SOUNDS\\FINALO.XA;1")){
 				printf("not found");
 			}
 			else {
-				play_xa_audio("\\SOUNDS\\INTER4.XA;1");
+				play_xa_audio("\\SOUNDS\\FINALO.XA;1");
 				bc = 2;
 			}
 		}

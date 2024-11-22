@@ -21,8 +21,9 @@
             <dir name="sounds">
                 <!-- Sound file -->
                 <file name="o.xa" type="xa" source="sounds/o.xa"/>
+                <file name="FINALO.XA" type="xa" source="sounds/finalo.xa"/>
 				<file name="INTER4.XA" type="xa" source="sounds/inter4.xa"/>
-            	<file name="INTER8.XA" type="xa" source="sounds/inter8.xa"/>
+            	
             </dir>
         </directory_tree>
     </track>
