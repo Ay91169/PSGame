@@ -333,21 +333,17 @@ int main() {
 	
 	// Init everything
 	init();	   
-    // SPU setup
-    // Init Spu
+    // Initialize SPU
     SpuInit();
-    // Set master & CD volume to max
-    spuSettings.mask = (SPU_COMMON_MVOLL | SPU_COMMON_MVOLR | SPU_COMMON_CDVOLL | SPU_COMMON_CDVOLR | SPU_COMMON_CDMIX);
-    spuSettings.mvol.left  = 0x6000;
-    spuSettings.mvol.right = 0x6000;
-    spuSettings.cd.volume.left = 0x6000;
-    spuSettings.cd.volume.right = 0x6000;
-    // Enable CD input ON
-    spuSettings.cd.mix = SPU_ON;
-    // Apply settings
-    SpuSetCommonAttr(&spuSettings);
-    // Set transfer mode 
-    SpuSetTransferMode(SPU_TRANSFER_BY_DMA);
+
+    // Set SPU attributes (e.g., volume and CD-XA mixing)
+    SpuCommonAttr attr;
+    attr.mvol.left = 0x3FFF;   // Max left volume
+    attr.mvol.right = 0x3FFF;  // Max right volume
+    attr.cd.mix = SPU_ON;      // Enable CD-XA mixing
+    SpuSetCommonAttr(&attr);
+
+    printf("SPU initialized for XA playback.\n");
 
 
 
@@ -391,6 +387,8 @@ int main() {
 		
 		//hbuts();
 		
+
+		
 		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
@@ -404,6 +402,7 @@ int main() {
 		FntPrint(" CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
 		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
 		FntPrint("distxy: %i, %i", distxx,distyy);
+		testaud();
 		
 		if(pad_buffer[3] == 0xBF){
 			printf("STRIKE!");
