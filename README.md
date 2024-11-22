@@ -17,7 +17,7 @@ Because i wanna save my progress on github and come back to it anytime. and to L
 - open this folder. then run at top bar ```Build  Debug``` 
 - then debug it. should work
 
-## Screenshots (coming soon for now)
+## Screenshots (more coming soon for now)
 ![Game screenshot](https://github.com/Ay91169/PSGame/blob/main/Ssgame.png)
 
 
@@ -29,3 +29,12 @@ Starting now ill put my updates here in single sentences.
 - added a FPS camera movment (FOR DUALSHOCK).
 - added Working Music. (for now silent hill music).
 - Added Screenshot to readme.
+
+# how to add XA
+to anyone who stumbled upon this game. and you dont know how to add XA. here is a little guide
+
+- Get [MOVCONV32](https://www.psxdev.net/forum/viewtopic.php?t=957) (thanks to shadow and psx.dev community)
+- Get a functioing WAV
+- Convert it to XA in "convert" in MOVCONV32
+- then add it to a multichannel, tick subheader and extract the output.
+- voilà! its a functioning XA (you can add more audios to one file and play them. by channel. its a good way to use the ps1 efficiently)
