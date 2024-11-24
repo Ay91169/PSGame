@@ -17,12 +17,13 @@
             <dir name="models">
                 <!-- Model file -->
                 <file name="pt.c" type="data" source="models/pt.c"/>
+                <file name="bed.c" type="data" source="models/bed.c"/>
             </dir>
             <dir name="sounds">
                 <!-- Sound file -->
-                <file name="o.xa" type="xa" source="sounds/o.xa"/>
+                
                 <file name="FINALO.XA" type="xa" source="sounds/finalo.xa"/>
-				<file name="INTER4.XA" type="xa" source="sounds/inter4.xa"/>
+				
             	
             </dir>
         </directory_tree>

@@ -1,0 +1,6 @@
+#RSD data describing the relationships to the PLY, MAT, and texture files
+@RSD940102 
+PLY=mat.ply
+MAT=mat.mat
+NTEX=1
+TEX[0]=slpm.tim

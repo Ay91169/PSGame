@@ -18,6 +18,7 @@
 // TMD models
 #include "models/PT.c"
 #include "sounds/to.c"
+#include "models/bed.c"
 
 
 
@@ -318,6 +319,8 @@ int main() {
 	VECTOR	obj_pos={0};
 	SVECTOR	obj_rot={0};
 	
+	VECTOR	bed_pos={0};
+	SVECTOR	bed_rot={0};
 	VECTOR	bulb_pos={0};
 	SVECTOR	bulb_rot={0};
 	
@@ -360,6 +363,7 @@ int main() {
 	
 	// Link the TMD models
 	ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
+	ObjectCount += LinkModel((u_long*)BED, &Object[1]);	// Platform
 	
 	
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
@@ -379,6 +383,8 @@ int main() {
 	
 	// Object positions
 	plat_pos.vy = 1024;
+	bed_pos.vz = 0;
+	bed_pos.vy = 1026;
 	bulb_pos.vz = -800;
 	bulb_pos.vy = -400;
 	obj_pos.vy = 400;
@@ -390,7 +396,7 @@ int main() {
 		
 
 		
-		//log_pad_buffer(pad_buffer,34);	
+		log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
 		
@@ -440,7 +446,7 @@ int main() {
 		
 		// Sort the platform and bulb objects
 		PutObject(plat_pos, plat_rot, &Object[0]);
-		PutObject(bulb_pos, bulb_rot, &Object[1]);
+		PutObject(bed_pos,bed_rot,&Object[1]);
 		
 		// Sort our test object(s)
 		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
