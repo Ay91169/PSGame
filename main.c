@@ -52,6 +52,11 @@ int			myActiveBuff=0;					// Page index counter
 
 
 // Camera coordinates
+
+//testing
+
+
+//camera main
 struct {
 	int		x,y,z;
 	int		pan,til,rol,panv,tilv;
@@ -60,6 +65,7 @@ struct {
 	SVECTOR rot;
 	GsRVIEW2 view;
 	GsCOORDINATE2 coord2;
+	MATRIX mat;
 } Camera = {0};
 
 int i;
@@ -207,8 +213,10 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     // Clamp pitch (rol) to prevent flipping
 	Camera.rol = clamp(Camera.rol, -800, 800);
 	Camera.panv = clamp(Camera.panv, -90 * ONE, 90 * ONE);
-	if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
-    if (Camera.pan < 0) Camera.pan += 4082;
+	//if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
+    //if (Camera.pan < 0) Camera.pan += 4082;
+	Camera.pan = (Camera.pan + 4082) % 4082;
+
     // ----------- Update Camera State ------------
     Camera.pos.vx += Camera.x; // Update position X
     Camera.pos.vy += Camera.y; // Update position Y
@@ -467,63 +475,53 @@ int main() {
 
 
 void CalculateCamera() {
-	
-	// This function simply calculates the viewpoint matrix based on the camera coordinates...
-	// It must be called on every frame before drawing any objects.
-	
-	VECTOR	vec;
-	GsVIEW2 view;
-	
-	// Copy the camera (base) matrix for the viewpoint matrix
-	view.view = Camera.coord2.coord;
-	view.super = WORLD;
-	
-	// I really can't explain how this works but I found it in one of the ZIMEN examples
-	RotMatrix(&Camera.rot, &view.view);
-	ApplyMatrixLV(&view.view, &Camera.pos, &vec);
-	TransMatrix(&view.view, &vec);
-	
-	// Set the viewpoint matrix to the GTE
-	GsSetView2(&view);
-	
+    VECTOR transformedPos;
+    GsVIEW2 view;
+
+    // Ensure the camera's rotation is applied to the view matrix
+    RotMatrix(&Camera.rot, &view.view);
+
+    // Apply the camera's position to the view matrix (translates the view)
+    ApplyMatrixLV(&view.view, &Camera.pos, &transformedPos);
+    TransMatrix(&view.view, &transformedPos);  // This is critical for the camera movement!
+
+    // Set the camera's coordinate system (WORLD means it's a world-based transformation)
+    view.super = WORLD;
+
+    // Apply the updated view matrix to the system
+    GsSetView2(&view);
+
+    // Optionally, debug output to check the view matrix
+    printf("Camera Position: (%d, %d, %d)\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
+    printf("Camera Rotation: (%d, %d, %d)\n", Camera.rot.vx, Camera.rot.vy, Camera.rot.vz);
 }
 
 void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
-	
-	/*	This function draws (or sorts) a TMD model linked to a GsDOBJ2 structure... All
-		matrix calculations are done automatically for simplified object placement.
-		
-		Parameters:
-			pos 	- Object position.
-			rot		- Object orientation.
-			*obj	- Pointer to a GsDOBJ2 structure that is linked to a TMD model.
-			
-	*/
-	
-	MATRIX lmtx,omtx;
-	GsCOORDINATE2 coord;
-	
-	// Copy the camera (base) matrix for the model
-	coord = Camera.coord2;
-	
-	// Rotate and translate the matrix according to the specified coordinates
-	RotMatrix(&rot, &omtx);
-	TransMatrix(&omtx, &pos);
-	CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
-	coord.flg = 0;
-	
-	// Apply coordinate matrix to the object
-	obj->coord2 = &coord;
-	
-	// Calculate Local-World (for lighting) and Local-Screen (for projection) matrices and set both to the GTE
-	GsGetLws(obj->coord2, &lmtx, &omtx);
-	GsSetLightMatrix(&lmtx);
-	GsSetLsMatrix(&omtx);
-	
-	// Sort the object!
-	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+    MATRIX lmtx, omtx;
+    GsCOORDINATE2 coord;
+
+    // Copy the updated camera coordinate matrix
+    coord = Camera.coord2;
+
+    // Rotate and translate the object matrix
+    RotMatrix(&rot, &omtx);
+    TransMatrix(&omtx, &pos);
+    CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
+    coord.flg = 0;
+
+    // Apply the coordinate matrix to the object
+    obj->coord2 = &coord;
+
+    // Calculate lighting and projection matrices
+    GsGetLws(obj->coord2, &lmtx, &omtx);
+    GsSetLightMatrix(&lmtx);
+    GsSetLsMatrix(&omtx);
+
+    // Sort the object for rendering
+    GsSortObject4(obj, &myOT[myActiveBuff], 14 - OT_LENGTH, getScratchAddr(0));
 	
 }
+
 
 
 int LinkModel(u_long *tmd, GsDOBJ2 *obj) {
