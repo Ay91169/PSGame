@@ -17,12 +17,16 @@
 
 // TMD models
 #include "models/PT.c"
-#include "models/FORG.c"
+#include "models/MARILYN.C"
+#include "models/FORG.C"
+#include "models/BED.C"
+// TIM textures
+#include "models/maritex.c"
 
 
 
 // Maximum number of objects
-#define MAX_OBJECTS 3
+#define MAX_OBJECTS 5
 
 
 // Screen resolution and dither mode
@@ -259,7 +263,7 @@ void hbuts(){
 		}
 
 		if (PADTYPE.PadStatus > 0) {
-        printf("Raw PadStatus: 0x%08X\n", PADTYPE.PadStatus);
+        
     	}     
         if(PADTYPE.PadStatus & PADLup)   {
             FntPrint("up \n"); Camera.panv += 4;Camera.pos.vz -= speed;
@@ -362,7 +366,7 @@ int main() {
 	
 	// Link the TMD models
 	ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
-	ObjectCount += LinkModel((u_long*)forg, &Object[2]);	// mar
+	ObjectCount += LinkModel((u_long*)tmd_bed, &Object[2]);	// mar
 	
 	
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
@@ -383,7 +387,7 @@ int main() {
 	// Object positions
 	plat_pos.vy = 1024;
 	bed_pos.vz = 0;
-	bed_pos.vy = 1026;
+	bed_pos.vy = 630;
 	bulb_pos.vz = -800;
 	bulb_pos.vy = -400;
 	obj_pos.vy = 400;
@@ -395,7 +399,7 @@ int main() {
 		
 
 		
-		log_pad_buffer(pad_buffer,34);	
+		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
 		
@@ -405,10 +409,10 @@ int main() {
 		
 		// Print banner and camera stats
 		
-		FntPrint(" CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
-		FntPrint(" CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
-		FntPrint("distxy: %i, %i", distxx,distyy);
-		testaud();
+		FntPrint(" POS CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
+		FntPrint(" ROT CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		
+		
 		
 		if(pad_buffer[3] == 0xBF){
 			printf("STRIKE!");
@@ -442,7 +446,7 @@ int main() {
 		//obj_rot.vx += 4;
 		obj_rot.vy += 4;
 		
-		
+		LoadTexture((u_long*)tim_maritex);
 		// Sort the platform and bulb objects
 		PutObject(plat_pos, plat_rot, &Object[0]);
 		PutObject(bed_pos,bed_rot,&Object[2]);
@@ -451,11 +455,11 @@ int main() {
 		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models
 			PutObject(obj_pos, obj_rot, &Object[i]);
 		}
-		FntPrint("PAN: %i",Camera.pan);
+		
 		
 		// Display the new frame
 		Display();
-		printf("test: %i", CurPos);
+		
 		
 	}
 	

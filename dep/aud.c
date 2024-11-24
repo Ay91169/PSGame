@@ -96,6 +96,3 @@ if (gPlaying) {
         
 }
 
-void testaud(){
-    FntPrint("Testmain: %d", CurPos);
-}
