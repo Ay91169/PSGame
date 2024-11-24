@@ -7,6 +7,9 @@
         "PLATFORM.C": "cpp",
         "MARITEX.C": "cpp",
         "pt.c": "cpp",
-        "MENU.C": "cpp"
+        "MENU.C": "cpp",
+        "BED.C": "cpp",
+        "FORG.C": "cpp",
+        "MARILYN.C": "cpp"
     }
 }

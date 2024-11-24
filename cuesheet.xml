@@ -1,13 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<iso_project image_name="abyss.bin" cue_sheet="abyss.cue" no_xa="1">
-	<track type="data">
-		<license file="LICENSEA.DAT"/>
-		<directory_tree>			
-			<file name="PSGame.ps-exe"	type="data"	source="PSGame.ps-exe"/>
-			<!-- Add your own files or folders here -->
-			<file name="GRID.TMD"	type="data"	source="models/GRID.TMD"/>
-			<dummy sectors="1024"/>
-		</directory_tree>
-	</track>
+<iso_project image_name="abyss.bin" cue_sheet="abyss.cue" no_xa="0">
+    <track type="data" xa_edc="true" new_type="false">
+        <identifiers
+            system="PLAYSTATION"
+            application="PLAYSTATION"
+            volume="MYDISC"
+            volume_set="MYDISC"
+            publisher="abyss"
+            data_preparer="MKPSXISO"
+            copyright="abysprd"
+        />
+        
+        <directory_tree>
+            <file name="PSX.exe" type="data" source="PSGame.ps-exe"/>
+            <dir name="models">
+                <!-- Model file -->
+                <file name="pt.c" type="data" source="models/pt.c"/>
+                <file name="BED.c" type="data" source="models/BED.c"/>
+            </dir>
+            <dir name="sounds">
+                <!-- Sound file -->
+                
+                <file name="FINALO.XA" type="xa" source="sounds/finalo.xa"/>
+				
+            	
+            </dir>
+        </directory_tree>
+    </track>
+
+
 </iso_project>
