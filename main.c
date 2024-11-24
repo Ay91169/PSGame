@@ -39,7 +39,7 @@
 
 
 // Increasing this value (max is 14) reduces sorting errors in certain cases
-#define OT_LENGTH	12
+#define OT_LENGTH	14
 
 #define OT_ENTRIES	1<<OT_LENGTH
 #define PACKETMAX	2048
@@ -176,8 +176,8 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     }
 
     // ----------- Handle Left Stick (Movement) ------------
-    int x_distance = (left_x - 0x7F) / 3;  // Strafe left/right distance
-    int y_distance = (left_y - 0x7F) / 3;  // Forward/backward distance (inverted Y-axis)
+    int x_distance = (left_x - 0x7F) / 5;  // Strafe left/right distance
+    int y_distance = (left_y - 0x7F) / 5;  // Forward/backward distance (inverted Y-axis)
 	distx = x_distance;
 	disty = y_distance;
     // Forward/backward movement (respecting camera pan)
@@ -312,7 +312,7 @@ void hbuts(){
 
 // Main stuff
 int main() {
-	Camera.pan = 0; // Initialize pan to 0
+ 	Camera.pan = 0; // Initialize pan to 0
 	PadInitDirect(pad_buffer,pad_buffer2);
 	PadSetAct(0,0,1);
 	PadStartCom();
@@ -378,6 +378,7 @@ int main() {
 	
 	
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
+	//Object[2].attribute |= GsDIV1;
 	for(i=2; i<ObjectCount; i++) {
 		Object[2].attribute = 0;		// Re-enable lighting for the test model
 	}
@@ -394,8 +395,8 @@ int main() {
 	
 	// Object positions
 	plat_pos.vy = 1024;
-	bed_pos.vz = 0;
-	bed_pos.vy = 630;
+	bed_pos.vz = 4000;
+	bed_pos.vy = 330;
 	bulb_pos.vz = -800;
 	bulb_pos.vy = -400;
 	obj_pos.vy = 400;
@@ -406,7 +407,7 @@ int main() {
 		//hbuts();
 		
 
-		
+		myActiveBuff = (myActiveBuff + 1) & 1;
 		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
@@ -419,6 +420,7 @@ int main() {
 		
 		FntPrint(" POS CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
 		FntPrint(" ROT CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		FntPrint(" Camera coord: %d", Camera.coord2);
 		
 		
 		
@@ -483,44 +485,54 @@ void CalculateCamera() {
 
     // Apply the camera's position to the view matrix (translates the view)
     ApplyMatrixLV(&view.view, &Camera.pos, &transformedPos);
+	
     TransMatrix(&view.view, &transformedPos);  // This is critical for the camera movement!
 
+	
     // Set the camera's coordinate system (WORLD means it's a world-based transformation)
-    view.super = WORLD;
+    //view.super = &Camera.coord2;
+	view.super = WORLD;
+	
 
     // Apply the updated view matrix to the system
     GsSetView2(&view);
 
-    // Optionally, debug output to check the view matrix
-    printf("Camera Position: (%d, %d, %d)\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
-    printf("Camera Rotation: (%d, %d, %d)\n", Camera.rot.vx, Camera.rot.vy, Camera.rot.vz);
+	FntPrint("%d",transformedPos);
+    
 }
 
 void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
     MATRIX lmtx, omtx;
     GsCOORDINATE2 coord;
-
-    // Copy the updated camera coordinate matrix
+    
+    // Copy camera coordinates
     coord = Camera.coord2;
-
-    // Rotate and translate the object matrix
+    
+    // Rotate and translate object matrix
     RotMatrix(&rot, &omtx);
     TransMatrix(&omtx, &pos);
+    
+    // Apply the camera transformation to object
     CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
+	//CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
+	
+	
     coord.flg = 0;
-
-    // Apply the coordinate matrix to the object
+    
+    // Apply object to GTE
     obj->coord2 = &coord;
-
-    // Calculate lighting and projection matrices
+    
+    // Set lighting and projection matrices
     GsGetLws(obj->coord2, &lmtx, &omtx);
     GsSetLightMatrix(&lmtx);
     GsSetLsMatrix(&omtx);
+    
+    // Sort object and render it
+    GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
 
-    // Sort the object for rendering
-    GsSortObject4(obj, &myOT[myActiveBuff], 14 - OT_LENGTH, getScratchAddr(0));
 	
 }
+
 
 
 
@@ -636,7 +648,7 @@ void init() {
 	GsSetAmbient(ONE/4, ONE/4, ONE/4);
 	
 	// Set default lighting mode
-	GsSetLightMode(0);
+	GsSetLightMode(1);
 	
 	
 	// Initialize controller
