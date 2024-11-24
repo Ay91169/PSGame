@@ -17,8 +17,7 @@
 
 // TMD models
 #include "models/PT.c"
-#include "sounds/to.c"
-#include "models/bed.c"
+#include "models/FORG.c"
 
 
 
@@ -363,7 +362,7 @@ int main() {
 	
 	// Link the TMD models
 	ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
-	ObjectCount += LinkModel((u_long*)BED, &Object[1]);	// Platform
+	ObjectCount += LinkModel((u_long*)forg, &Object[2]);	// mar
 	
 	
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
@@ -446,7 +445,7 @@ int main() {
 		
 		// Sort the platform and bulb objects
 		PutObject(plat_pos, plat_rot, &Object[0]);
-		PutObject(bed_pos,bed_rot,&Object[1]);
+		PutObject(bed_pos,bed_rot,&Object[2]);
 		
 		// Sort our test object(s)
 		for(i=2; i<ObjectCount; i++) {	// This for-loop is not needed but its here for TMDs with multiple models

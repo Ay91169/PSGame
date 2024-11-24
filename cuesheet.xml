@@ -17,7 +17,7 @@
             <dir name="models">
                 <!-- Model file -->
                 <file name="pt.c" type="data" source="models/pt.c"/>
-                <file name="bed.c" type="data" source="models/bed.c"/>
+                <file name="FORG.c" type="data" source="models/FORG.c"/>
             </dir>
             <dir name="sounds">
                 <!-- Sound file -->
