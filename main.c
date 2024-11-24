@@ -39,7 +39,7 @@
 
 
 // Increasing this value (max is 14) reduces sorting errors in certain cases
-#define OT_LENGTH	12
+#define OT_LENGTH	14
 
 #define OT_ENTRIES	1<<OT_LENGTH
 #define PACKETMAX	2048
@@ -52,6 +52,11 @@ int			myActiveBuff=0;					// Page index counter
 
 
 // Camera coordinates
+
+//testing
+
+
+//camera main
 struct {
 	int		x,y,z;
 	int		pan,til,rol,panv,tilv;
@@ -60,6 +65,7 @@ struct {
 	SVECTOR rot;
 	GsRVIEW2 view;
 	GsCOORDINATE2 coord2;
+	MATRIX mat;
 } Camera = {0};
 
 int i;
@@ -170,8 +176,8 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     }
 
     // ----------- Handle Left Stick (Movement) ------------
-    int x_distance = (left_x - 0x7F) / 3;  // Strafe left/right distance
-    int y_distance = (left_y - 0x7F) / 3;  // Forward/backward distance (inverted Y-axis)
+    int x_distance = (left_x - 0x7F) / 5;  // Strafe left/right distance
+    int y_distance = (left_y - 0x7F) / 5;  // Forward/backward distance (inverted Y-axis)
 	distx = x_distance;
 	disty = y_distance;
     // Forward/backward movement (respecting camera pan)
@@ -207,8 +213,10 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
     // Clamp pitch (rol) to prevent flipping
 	Camera.rol = clamp(Camera.rol, -800, 800);
 	Camera.panv = clamp(Camera.panv, -90 * ONE, 90 * ONE);
-	if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
-    if (Camera.pan < 0) Camera.pan += 4082;
+	//if (Camera.pan >= 4082) Camera.pan -= 4082; // Wrap around from 4082 back to 0
+    //if (Camera.pan < 0) Camera.pan += 4082;
+	Camera.pan = (Camera.pan + 4082) % 4082;
+
     // ----------- Update Camera State ------------
     Camera.pos.vx += Camera.x; // Update position X
     Camera.pos.vy += Camera.y; // Update position Y
@@ -304,7 +312,7 @@ void hbuts(){
 
 // Main stuff
 int main() {
-	Camera.pan = 0; // Initialize pan to 0
+ 	Camera.pan = 0; // Initialize pan to 0
 	PadInitDirect(pad_buffer,pad_buffer2);
 	PadSetAct(0,0,1);
 	PadStartCom();
@@ -370,6 +378,7 @@ int main() {
 	
 	
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
+	//Object[2].attribute |= GsDIV1;
 	for(i=2; i<ObjectCount; i++) {
 		Object[2].attribute = 0;		// Re-enable lighting for the test model
 	}
@@ -386,8 +395,8 @@ int main() {
 	
 	// Object positions
 	plat_pos.vy = 1024;
-	bed_pos.vz = 0;
-	bed_pos.vy = 630;
+	bed_pos.vz = 4000;
+	bed_pos.vy = 330;
 	bulb_pos.vz = -800;
 	bulb_pos.vy = -400;
 	obj_pos.vy = 400;
@@ -398,7 +407,7 @@ int main() {
 		//hbuts();
 		
 
-		
+		myActiveBuff = (myActiveBuff + 1) & 1;
 		//log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
@@ -411,6 +420,7 @@ int main() {
 		
 		FntPrint(" POS CX:%d CY:%d CZ:%d\n", Camera.pos.vx, Camera.pos.vy, Camera.pos.vz);
 		FntPrint(" ROT CP:%d CT:%d CR:%d\n", Camera.rot.vy, Camera.rot.vx, Camera.rot.vz);
+		FntPrint(" Camera coord: %d", Camera.coord2);
 		
 		
 		
@@ -467,63 +477,63 @@ int main() {
 
 
 void CalculateCamera() {
+    VECTOR transformedPos;
+    GsVIEW2 view;
+
+    // Ensure the camera's rotation is applied to the view matrix
+    RotMatrix(&Camera.rot, &view.view);
+
+    // Apply the camera's position to the view matrix (translates the view)
+    ApplyMatrixLV(&view.view, &Camera.pos, &transformedPos);
 	
-	// This function simply calculates the viewpoint matrix based on the camera coordinates...
-	// It must be called on every frame before drawing any objects.
+    TransMatrix(&view.view, &transformedPos);  // This is critical for the camera movement!
+
 	
-	VECTOR	vec;
-	GsVIEW2 view;
-	
-	// Copy the camera (base) matrix for the viewpoint matrix
-	view.view = Camera.coord2.coord;
+    // Set the camera's coordinate system (WORLD means it's a world-based transformation)
+    //view.super = &Camera.coord2;
 	view.super = WORLD;
 	
-	// I really can't explain how this works but I found it in one of the ZIMEN examples
-	RotMatrix(&Camera.rot, &view.view);
-	ApplyMatrixLV(&view.view, &Camera.pos, &vec);
-	TransMatrix(&view.view, &vec);
-	
-	// Set the viewpoint matrix to the GTE
-	GsSetView2(&view);
-	
+
+    // Apply the updated view matrix to the system
+    GsSetView2(&view);
+
+	FntPrint("%d",transformedPos);
+    
 }
 
 void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
+    MATRIX lmtx, omtx;
+    GsCOORDINATE2 coord;
+    
+    // Copy camera coordinates
+    coord = Camera.coord2;
+    
+    // Rotate and translate object matrix
+    RotMatrix(&rot, &omtx);
+    TransMatrix(&omtx, &pos);
+    
+    // Apply the camera transformation to object
+    CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
+	//CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
 	
-	/*	This function draws (or sorts) a TMD model linked to a GsDOBJ2 structure... All
-		matrix calculations are done automatically for simplified object placement.
-		
-		Parameters:
-			pos 	- Object position.
-			rot		- Object orientation.
-			*obj	- Pointer to a GsDOBJ2 structure that is linked to a TMD model.
-			
-	*/
 	
-	MATRIX lmtx,omtx;
-	GsCOORDINATE2 coord;
-	
-	// Copy the camera (base) matrix for the model
-	coord = Camera.coord2;
-	
-	// Rotate and translate the matrix according to the specified coordinates
-	RotMatrix(&rot, &omtx);
-	TransMatrix(&omtx, &pos);
-	CompMatrixLV(&Camera.coord2.coord, &omtx, &coord.coord);
-	coord.flg = 0;
-	
-	// Apply coordinate matrix to the object
-	obj->coord2 = &coord;
-	
-	// Calculate Local-World (for lighting) and Local-Screen (for projection) matrices and set both to the GTE
-	GsGetLws(obj->coord2, &lmtx, &omtx);
-	GsSetLightMatrix(&lmtx);
-	GsSetLsMatrix(&omtx);
-	
-	// Sort the object!
-	GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+    coord.flg = 0;
+    
+    // Apply object to GTE
+    obj->coord2 = &coord;
+    
+    // Set lighting and projection matrices
+    GsGetLws(obj->coord2, &lmtx, &omtx);
+    GsSetLightMatrix(&lmtx);
+    GsSetLsMatrix(&omtx);
+    
+    // Sort object and render it
+    GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+
 	
 }
+
+
 
 
 int LinkModel(u_long *tmd, GsDOBJ2 *obj) {
@@ -638,7 +648,7 @@ void init() {
 	GsSetAmbient(ONE/4, ONE/4, ONE/4);
 	
 	// Set default lighting mode
-	GsSetLightMode(0);
+	GsSetLightMode(1);
 	
 	
 	// Initialize controller
