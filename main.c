@@ -16,7 +16,7 @@
 #include "dep/aud.h"
 
 // TMD models
-#include "models/PT.c"
+#include "models/LAY.c"
 #include "models/MARILYN.C"
 #include "models/FORG.C"
 #include "models/BED.C"
@@ -252,8 +252,15 @@ void handle_dualshock(unsigned char *pad_buffer,int distx,int disty) {
 void hbuts(){
     int speed= 3;
 
+	if(pad_buffer[1] == 0x73){
+		FntPrint("Analog mode active\n");
+		handle_dualshock(pad_buffer,distxx,distyy);
+		return;
+	} else {
+		FntPrint("Digital mode active\n");
+	}
 	
-	handle_dualshock(pad_buffer,distxx,distyy);
+	
 	
 
 	
@@ -264,11 +271,7 @@ void hbuts(){
         // D-pad
 
 
-		if (PADTYPE.PadStatus & 0xF000) {
-   		 	FntPrint("Analog mode active\n");
-		} else {
-    		FntPrint("Digital mode active\n");
-		}
+		
 
 		if (PADTYPE.PadStatus > 0) {
         
@@ -373,7 +376,7 @@ int main() {
 	
 	
 	// Link the TMD models
-	ObjectCount += LinkModel((u_long*)tmd_platform, &Object[0]);	// Platform
+	ObjectCount += LinkModel((u_long*)layout, &Object[0]);	// Platform
 	ObjectCount += LinkModel((u_long*)tmd_bed, &Object[2]);	// mar
 	
 	
@@ -394,7 +397,7 @@ int main() {
 	
 	
 	// Object positions
-	plat_pos.vy = 1024;
+	plat_pos.vy = 0;
 	bed_pos.vz = 4000;
 	bed_pos.vy = 330;
 	bulb_pos.vz = -800;
@@ -408,7 +411,7 @@ int main() {
 		
 
 		myActiveBuff = (myActiveBuff + 1) & 1;
-		//log_pad_buffer(pad_buffer,34);	
+		log_pad_buffer(pad_buffer,34);	
 		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
 		
