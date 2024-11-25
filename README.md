@@ -27,8 +27,9 @@ Because i wanna save my progress on github and come back to it anytime. and to L
 Starting now ill put my updates here in single sentences. 
 
 - added a FPS camera movment (FOR DUALSHOCK).
-- added Working Music. (for now silent hill music).
+- Added Working Music. (for now silent hill music).
 - Added Screenshot to readme.
+- Added A working Object Renderer. (with a guide below)
 
 # how to add XA
 to anyone who stumbled upon this game. and you dont know how to add XA. here is a little guide
