@@ -10,6 +10,7 @@
         "MENU.C": "cpp",
         "BED.C": "cpp",
         "FORG.C": "cpp",
-        "MARILYN.C": "cpp"
+        "MARILYN.C": "cpp",
+        "LAY.C": "cpp"
     }
 }
