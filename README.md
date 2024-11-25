@@ -1,7 +1,7 @@
 
 # PSGAME
 
-A C coded PSGAME i made using psy-Q SDK.
+A C coded PSGAME i made using psy-Q SDK. (using lameguy's 3d viewer example and enhancing on it)
 
 ## why?
 
