@@ -38,3 +38,7 @@ to anyone who stumbled upon this game. and you dont know how to add XA. here is 
 - Convert it to XA in "convert" in MOVCONV32
 - then add it to a multichannel, tick subheader and extract the output.
 - voilà! its a functioning XA (you can add more audios to one file and play them. by channel. its a good way to use the ps1 efficiently)
+
+# how to make TMDS.
+### Special thanks to Garcia for making Extracting tmds possible on modern Hardware.
+Here is his [forumpost](https://united3dartists.com/forum/viewtopic.php?p=66762#p66762) on how to add TMDS.
