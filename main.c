@@ -377,23 +377,27 @@ int main() {
 	
 	// Link the TMD models
 	ObjectCount += LinkModel((u_long*)layout, &Object[0]);	// Platform
-	ObjectCount += LinkModel((u_long*)tmd_bed, &Object[2]);	// mar
-	
-	
+	ObjectCount += LinkModel((u_long*)tmd_bed, &Object[2]);	// Bed
+
+
 	Object[0].attribute |= GsDIV1;	// Set 2x2 sub-division for the platform to reduce clipping errors
-	//Object[2].attribute |= GsDIV1;
-	for(i=2; i<ObjectCount; i++) {
-		Object[2].attribute = 0;		// Re-enable lighting for the test model
+	Object[2].attribute |= GsDIV2;	// Disable backface culling for bed to fix rendering issues
+	for(i=3; i<ObjectCount; i++) {
+		Object[i].attribute = 0;		// Re-enable lighting for other models
 	}
 	
 	
-	// Default camera/player position
-	Player.x = ONE*-640;
-	Player.y = ONE*510;
-	Player.z = ONE*800;
-	
-	Player.pan = -660;
-	Player.til = -245;
+	// Default camera/player position for FPS
+	Player.x = 0;
+	Player.y = ONE*100;  // Eye level
+	Player.z = 0;
+
+	Camera.pos.vx = Player.x;
+	Camera.pos.vy = Player.y;
+	Camera.pos.vz = Player.z;
+	Camera.pan = 0;
+	Camera.til = 0;
+	Camera.rol = 0;
 	
 	
 	// Object positions
@@ -531,7 +535,11 @@ void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
     GsSetLsMatrix(&omtx);
     
     // Sort object and render it
-    GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+    if (obj == &Object[2]) {  // Disable backface culling for bed
+        GsSortObject3(obj, &myOT[myActiveBuff], 14-OT_LENGTH);
+    } else {
+        GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
+    }
 
 	
 }
