@@ -1,4 +1,4 @@
-#include <LIBCD.H>
+#include <libcd.h>
 #include <stdio.h>
 #include <libgpu.h>
 

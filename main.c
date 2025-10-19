@@ -16,12 +16,12 @@
 #include "dep/aud.h"
 
 // TMD models
-#include "models/LAY.c"
+#include "models/LAY.C"
 #include "models/MARILYN.C"
 #include "models/FORG.C"
 #include "models/BED.C"
 // TIM textures
-#include "models/maritex.c"
+#include "models/MARITEX.C"
 
 
 
@@ -253,11 +253,11 @@ void hbuts(){
     int speed= 3;
 
 	if(pad_buffer[1] == 0x73){
-		FntPrint("Analog mode active\n");
+                FntPrint("Analog mode active\n");
 		handle_dualshock(pad_buffer,distxx,distyy);
 		return;
 	} else {
-		FntPrint("Digital mode active\n");
+                FntPrint("Digital mode active\n");
 	}
 	
 	
@@ -285,14 +285,14 @@ void hbuts(){
              Camera.pos.vx += speed;} // 🡨
         // Buttons
         if(PADTYPE.PadStatus & PADRup)   {FntPrint("tri \n");
-		
+
 		} // △
         if(PADTYPE.PadStatus & PADRdown) {FntPrint("X \n");
 		;
-		
+
 		} // ╳
         if(PADTYPE.PadStatus & PADRright){FntPrint("O \n");
-		
+
 		Camera.z += (csin(Camera.pan)*1);
 		Camera.x -= (ccos(Camera.pan)*1);
 		} // ⭘
@@ -306,7 +306,7 @@ void hbuts(){
         if(PADTYPE.PadStatus & PADstart){FntPrint("Start \n");} // START
         if(PADTYPE.PadStatus & PADselect){FntPrint("sel \n");}  // SELECT
 		if(PADTYPE.PadStatus & PADR3){FntPrint("R3 \n");}
-		if(PADTYPE.PadStatus & PADL3){FntPrint("L3 \n");}   
+		if(PADTYPE.PadStatus & PADL3){FntPrint("L3 \n");}
 
 	
 
@@ -389,7 +389,7 @@ int main() {
 	
 	// Default camera/player position for FPS
 	Player.x = 0;
-	Player.y = ONE*100;  // Eye level
+	Player.y = 0;  // Ground level
 	Player.z = 0;
 
 	Camera.pos.vx = Player.x;
@@ -415,8 +415,8 @@ int main() {
 		
 
 		myActiveBuff = (myActiveBuff + 1) & 1;
-		log_pad_buffer(pad_buffer,34);	
-		FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
+		//log_pad_buffer(pad_buffer,34);	
+                FntPrint("Left Stick xy-Axis: %02X, %02X,\n Right Stick: %02X,%02X \n", pad_buffer[6],pad_buffer[7],pad_buffer[5],pad_buffer[5]);
 		
 		
 		// Prepare for rendering
@@ -441,7 +441,7 @@ int main() {
 				printf("not found");
 			}
 			else {
-				play_xa_audio("\\SOUNDS\\FINALO.XA;1");
+				play_xa_audio((char*)"\\SOUNDS\\FINALO.XA;1");
 				bc = 2;
 			}
 		}
@@ -504,7 +504,7 @@ void CalculateCamera() {
     // Apply the updated view matrix to the system
     GsSetView2(&view);
 
-	FntPrint("%d",transformedPos);
+        FntPrint("%d",transformedPos);
     
 }
 
@@ -536,7 +536,7 @@ void PutObject(VECTOR pos, SVECTOR rot, GsDOBJ2 *obj) {
     
     // Sort object and render it
     if (obj == &Object[2]) {  // Disable backface culling for bed
-        GsSortObject3(obj, &myOT[myActiveBuff], 14-OT_LENGTH);
+        GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
     } else {
         GsSortObject4(obj, &myOT[myActiveBuff], 14-OT_LENGTH, getScratchAddr(0));
     }
@@ -643,7 +643,7 @@ void init() {
 	
 	// Initialize debug font stream
 	FntLoad(960, 0);
-	FntOpen(-CENTERX, -CENTERY, SCREEN_XRES, SCREEN_YRES, 0, 512);
+	FntOpen(0, 8, SCREEN_XRES, SCREEN_YRES, 0, 512);
 	
 	
 	// Setup 3D and projection matrix
